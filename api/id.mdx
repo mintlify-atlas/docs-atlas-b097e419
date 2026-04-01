@@ -1,0 +1,135 @@
+---
+title: "ID"
+description: "Generate IDs for Appwrite resources."
+---
+
+The `ID` helper class provides static methods for supplying document and file IDs when creating Appwrite resources. You can let Appwrite generate a unique ID for you, or provide your own.
+
+## Methods
+
+### `ID.unique(padding?)`
+
+Generates a timestamp-based hexadecimal ID with random padding appended for additional uniqueness.
+
+```typescript
+ID.unique(padding?: number): string
+```
+
+| Parameter | Type     | Default | Description                                               |
+| --------- | -------- | ------- | --------------------------------------------------------- |
+| `padding` | `number` | `7`     | Number of random hex digits appended after the timestamp. |
+
+The ID is constructed from the current Unix timestamp (in seconds) converted to hex, the current milliseconds zero-padded to 5 hex digits, and `padding` random hex characters. The default `padding` of `7` produces a 20-character ID.
+
+```typescript
+import { ID } from 'node-appwrite';
+
+ID.unique();     // e.g. "65f3a1b2c004a3e7f1d2b9c"
+ID.unique(0);    // timestamp only, e.g. "65f3a1b2c004a"
+ID.unique(14);   // longer ID with more randomness
+```
+
+<Warning>
+  Reducing `padding` below the default increases the chance of collisions in
+  high-throughput scenarios. Use the default unless you have a specific reason
+  to change it.
+</Warning>
+
+### `ID.custom(id)`
+
+Uses the provided string as the resource ID exactly as-is, bypassing Appwrite's ID generation.
+
+```typescript
+ID.custom(id: string): string
+```
+
+| Parameter | Type     | Description                   |
+| --------- | -------- | ----------------------------- |
+| `id`      | `string` | The ID string to use directly. |
+
+```typescript
+import { ID } from 'node-appwrite';
+
+ID.custom('my-document-id');   // "my-document-id"
+ID.custom('user_abc123');      // "user_abc123"
+```
+
+<Note>
+  Appwrite IDs must be 1–36 characters, start with a letter or digit, and may
+  only contain letters, digits, hyphens, and underscores.
+</Note>
+
+## When to use each method
+
+| Situation                                               | Recommended method  |
+| ------------------------------------------------------- | ------------------- |
+| Creating a new resource with no predetermined ID        | `ID.unique()`       |
+| Migrating existing data where IDs must be preserved     | `ID.custom(id)`     |
+| Deterministic IDs for testing or reproducible scenarios | `ID.custom(id)`     |
+| High-volume ingestion where you control ID generation   | `ID.custom(id)`     |
+
+## Examples
+
+### Creating a document with a generated ID
+
+```typescript
+import { Client, Databases, ID } from 'node-appwrite';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('<PROJECT_ID>')
+  .setKey('<API_KEY>');
+
+const databases = new Databases(client);
+
+const document = await databases.createDocument(
+  '<DATABASE_ID>',
+  '<COLLECTION_ID>',
+  ID.unique(),          // Appwrite generates a unique ID
+  {
+    title: 'Hello, World!',
+    published: true,
+  }
+);
+
+console.log(document.$id); // e.g. "65f3a1b2c004a3e7f1d2b9c"
+```
+
+### Uploading a file with a custom ID
+
+```typescript
+import { Client, Storage, ID } from 'node-appwrite';
+import { InputFile } from 'node-appwrite/file';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('<PROJECT_ID>')
+  .setKey('<API_KEY>');
+
+const storage = new Storage(client);
+
+const file = await storage.createFile(
+  '<BUCKET_ID>',
+  ID.custom('profile-photo-user123'),  // deterministic, human-readable ID
+  InputFile.fromPath('/tmp/avatar.png', 'avatar.png')
+);
+
+console.log(file.$id); // "profile-photo-user123"
+```
+
+### Creating a document with a custom ID
+
+```typescript
+const document = await databases.createDocument(
+  '<DATABASE_ID>',
+  '<COLLECTION_ID>',
+  ID.custom('slug-based-id'),
+  { title: 'My Post' }
+);
+```
+
+## Related
+
+- [Query](/api/query) — filter and sort results when listing resources
+- [Permission](/api/permission) — control who can access each resource
+- [Role](/api/role) — generate role strings for use with `Permission`

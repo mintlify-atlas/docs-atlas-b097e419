@@ -1,0 +1,231 @@
+---
+title: "Permissions"
+description: "Control access to resources using Permission and Role helpers."
+---
+
+Appwrite uses a permission system to control who can read, create, update, or delete a resource. Permissions are expressed as strings attached to documents, files, and other resources at creation or update time.
+
+The SDK provides two helper classes:
+
+- **`Permission`** — generates permission strings for a given action.
+- **`Role`** — generates role strings to identify who the permission applies to.
+
+```typescript
+import { Permission, Role } from 'node-appwrite';
+```
+
+---
+
+## Permission class
+
+Each static method takes a role string and returns a formatted permission string.
+
+### Permission.read
+
+```typescript
+Permission.read(role: string): string
+// returns: 'read("<role>")'
+```
+
+Grants read access to the resource.
+
+### Permission.create
+
+```typescript
+Permission.create(role: string): string
+// returns: 'create("<role>")'
+```
+
+Grants create access (relevant for collections and buckets).
+
+### Permission.update
+
+```typescript
+Permission.update(role: string): string
+// returns: 'update("<role>")'
+```
+
+Grants the ability to modify the resource.
+
+### Permission.delete
+
+```typescript
+Permission.delete(role: string): string
+// returns: 'delete("<role>")'
+```
+
+Grants the ability to delete the resource.
+
+### Permission.write
+
+```typescript
+Permission.write(role: string): string
+// returns: 'write("<role>")'
+```
+
+A shorthand alias that grants update and delete access (and possibly create, depending on the resource type).
+
+<Warning>
+Do not combine `Permission.write` with `Permission.update`, `Permission.delete`, or `Permission.create` for the same role. Use either `write` or the individual permissions, not both.
+</Warning>
+
+---
+
+## Role class
+
+`Role` methods generate the role strings passed to `Permission` methods.
+
+### Role.any
+
+```typescript
+Role.any(): string
+// returns: 'any'
+```
+
+Grants access to everyone — authenticated users and guests alike.
+
+### Role.users
+
+```typescript
+Role.users(status?: string): string
+// returns: 'users' or 'users/verified' or 'users/unverified'
+```
+
+Grants access to all authenticated users. Pass `'verified'` or `'unverified'` to target only users with that verification status.
+
+### Role.guests
+
+```typescript
+Role.guests(): string
+// returns: 'guests'
+```
+
+Grants access to unauthenticated users only. Authenticated users do not match this role.
+
+### Role.user
+
+```typescript
+Role.user(id: string, status?: string): string
+// returns: 'user:<id>' or 'user:<id>/verified'
+```
+
+Grants access to a specific user by their ID. Optionally filter by `'verified'` or `'unverified'` status.
+
+### Role.team
+
+```typescript
+Role.team(id: string, role?: string): string
+// returns: 'team:<id>' or 'team:<id>/<role>'
+```
+
+Grants access to all members of a team. Optionally restrict to members with a specific team role (e.g. `'owner'`, `'editor'`).
+
+### Role.member
+
+```typescript
+Role.member(id: string): string
+// returns: 'member:<id>'
+```
+
+Grants access to a specific team membership by membership ID. Access is revoked automatically when the member is removed from the team.
+
+### Role.label
+
+```typescript
+Role.label(name: string): string
+// returns: 'label:<name>'
+```
+
+Grants access to all users who have been assigned the specified label.
+
+---
+
+## Setting permissions on resources
+
+Pass an array of permission strings to the `permissions` parameter when creating or updating a document, file, or other resource.
+
+### Example: creating a document with explicit permissions
+
+```typescript
+import { Client, Databases, Permission, Role, ID } from 'node-appwrite';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('my-project-id')
+  .setKey('my-api-key');
+
+const databases = new Databases(client);
+
+const document = await databases.createDocument(
+  'my-database-id',
+  'my-collection-id',
+  ID.unique(),
+  { title: 'Hello, World', published: true },
+  [
+    Permission.read(Role.any()),                        // anyone can read
+    Permission.update(Role.user('user-abc')),           // specific user can edit
+    Permission.delete(Role.team('editors', 'owner')),   // team owners can delete
+  ]
+);
+```
+
+### Example: publicly readable storage bucket, write-protected
+
+```typescript
+import { Client, Storage, Permission, Role, ID } from 'node-appwrite';
+
+const storage = new Storage(client);
+
+const bucket = await storage.createBucket(
+  ID.unique(),
+  'Public Assets',
+  [
+    Permission.read(Role.any()),                  // public read
+    Permission.create(Role.users('verified')),    // verified users can upload
+    Permission.update(Role.users('verified')),    // verified users can update
+    Permission.delete(Role.label('moderator')),   // only moderators can delete
+  ]
+);
+```
+
+### Example: team-scoped document
+
+```typescript
+const document = await databases.createDocument(
+  'my-database-id',
+  'posts',
+  ID.unique(),
+  { content: 'Team-only post' },
+  [
+    Permission.read(Role.team('team-xyz')),    // all team members can read
+    Permission.write(Role.team('team-xyz', 'owner')),  // team owners can write
+  ]
+);
+```
+
+---
+
+## How permissions are evaluated
+
+Appwrite checks permissions on every request. A user gains access to a resource if any of the resource's permissions match one of the user's roles. Permissions are additive — there is no deny rule.
+
+For collection-level vs. document-level permissions, see your Appwrite project's collection settings in the Console.
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Client" icon="code" href="/concepts/client">
+    Configure the SDK client.
+  </Card>
+  <Card title="Queries" icon="filter" href="/concepts/queries">
+    Filter and sort results.
+  </Card>
+  <Card title="Permission API" icon="lock" href="/api/permission">
+    Permission class reference.
+  </Card>
+  <Card title="Role API" icon="user-shield" href="/api/role">
+    Role class reference.
+  </Card>
+</CardGroup>

@@ -1,0 +1,224 @@
+---
+title: "TypeScript Guide"
+description: "Use TypeScript generics for type-safe database documents and user preferences."
+---
+
+The Appwrite Node.js SDK is written in TypeScript and ships its own type declarations. You get auto-completion and compile-time safety out of the box — no separate `@types` package required.
+
+## Why use TypeScript with this SDK
+
+Without generics, document and user methods return loosely typed objects (`Record<string, any>`). Passing your own interface as a type argument narrows the return type so TypeScript can catch mismatched field names, wrong value types, and missing properties at compile time rather than at runtime.
+
+## Type-safe documents
+
+The `Databases` service uses a generic type parameter on `listDocuments`, `getDocument`, and `createDocument`. Every custom document type must extend `Models.Document`.
+
+### The `Models.Document` base type
+
+`Models.Document` carries the system fields that Appwrite attaches to every document:
+
+```typescript
+// From src/models.ts
+export type Document = {
+  $id: string;
+  $sequence: string;       // v23+: string (was number before v23)
+  $collectionId: string;
+  $databaseId: string;
+  $createdAt: string;
+  $updatedAt: string;
+  $permissions: string[];
+};
+```
+
+### Defining a document interface
+
+Extend `Models.Document` and add your own collection attributes:
+
+```typescript
+import { Models } from 'node-appwrite';
+
+interface Book extends Models.Document {
+  title: string;
+  author: string;
+  publishedYear: number;
+  inStock: boolean;
+}
+```
+
+### Listing documents
+
+```typescript
+import { Client, Databases, Models } from 'node-appwrite';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('<PROJECT_ID>')
+  .setKey('<API_KEY>');
+
+const databases = new Databases(client);
+
+const result = await databases.listDocuments<Book>(
+  '<DATABASE_ID>',
+  '<COLLECTION_ID>'
+);
+
+// result.documents is Book[] — all fields are typed
+for (const book of result.documents) {
+  console.log(book.title, book.$id);
+}
+```
+
+### Getting a single document
+
+```typescript
+const book = await databases.getDocument<Book>(
+  '<DATABASE_ID>',
+  '<COLLECTION_ID>',
+  '<DOCUMENT_ID>'
+);
+
+console.log(book.author); // string — TypeScript knows the type
+```
+
+### Creating a document
+
+The `data` parameter is typed as `Omit<Book, keyof Models.Document>` — you supply only your custom fields; Appwrite manages the system fields.
+
+```typescript
+const newBook = await databases.createDocument<Book>(
+  '<DATABASE_ID>',
+  '<COLLECTION_ID>',
+  '<DOCUMENT_ID>', // or ID.unique()
+  {
+    title: 'Dune',
+    author: 'Frank Herbert',
+    publishedYear: 1965,
+    inStock: true,
+  }
+);
+
+console.log(newBook.$id); // available from Models.Document base
+```
+
+## Type-safe user preferences
+
+The `Users` service accepts a `Preferences` generic on `list`, `create`, `get`, and other methods.
+
+### The `Models.Preferences` interface and its default
+
+```typescript
+// From src/models.ts
+export type Preferences = {};                           // empty base
+
+export type DefaultPreferences = Preferences & {
+  [key: string]: any;                                   // fallback: untyped
+};
+```
+
+When you do not pass a generic, `DefaultPreferences` is used and `prefs` is typed as `Record<string, any>`. Pass your own interface to tighten the type.
+
+### Defining a preferences interface
+
+```typescript
+import { Models } from 'node-appwrite';
+
+interface UserPrefs extends Models.Preferences {
+  theme: 'light' | 'dark';
+  language: string;
+  notificationsEnabled: boolean;
+}
+```
+
+### Getting a user with typed preferences
+
+```typescript
+import { Client, Users } from 'node-appwrite';
+
+const users = new Users(client);
+
+const user = await users.get<UserPrefs>('<USER_ID>');
+
+// user.prefs is UserPrefs — TypeScript enforces the shape
+console.log(user.prefs.theme);
+console.log(user.prefs.language);
+```
+
+### Listing users with typed preferences
+
+```typescript
+const userList = await users.list<UserPrefs>();
+
+// userList.users is Models.User<UserPrefs>[]
+for (const u of userList.users) {
+  console.log(u.prefs.notificationsEnabled);
+}
+```
+
+### The `Models.User<Preferences>` generic type
+
+Key fields on `Models.User<Preferences>`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `$id` | `string` | User ID |
+| `$createdAt` | `string` | Creation date (ISO 8601) |
+| `$updatedAt` | `string` | Last update date (ISO 8601) |
+| `name` | `string` | Display name |
+| `email` | `string` | Email address |
+| `phone` | `string` | Phone number (E.164) |
+| `status` | `boolean` | Account enabled/disabled |
+| `emailVerification` | `boolean` | Email verified |
+| `phoneVerification` | `boolean` | Phone verified |
+| `mfa` | `boolean` | MFA enabled |
+| `prefs` | `Preferences` | User preferences (generic) |
+| `labels` | `string[]` | Custom labels |
+| `impersonator` | `boolean?` | Can impersonate other users |
+
+## Working with `UploadProgress`
+
+When uploading files, pass an `onProgress` callback typed against `UploadProgress`:
+
+```typescript
+import { Client, Storage, type UploadProgress } from 'node-appwrite';
+import { readFileSync } from 'node:fs';
+
+const storage = new Storage(client);
+
+const file = new File(
+  [readFileSync('./photo.jpg')],
+  'photo.jpg',
+  { type: 'image/jpeg' }
+);
+
+await storage.createFile({
+  bucketId: '<BUCKET_ID>',
+  fileId: 'unique()',
+  file,
+  onProgress: (progress: UploadProgress) => {
+    console.log(`${progress.progress}% — chunk ${progress.chunksUploaded}/${progress.chunksTotal}`);
+  },
+});
+```
+
+The `UploadProgress` type:
+
+```typescript
+type UploadProgress = {
+  $id: string;           // file ID returned by the server
+  progress: number;      // 0–100
+  sizeUploaded: number;  // bytes uploaded so far
+  chunksTotal: number;   // total number of chunks
+  chunksUploaded: number; // chunks uploaded so far
+};
+```
+
+<Tip>
+Using JavaScript instead of TypeScript? Add a `// @ts-check` comment at the top of your file and annotate with JSDoc to get IntelliSense hints in VS Code and other editors:
+
+```javascript
+// @ts-check
+
+/** @type {import('node-appwrite').Models.User<{theme: string}>} */
+let user;
+```
+</Tip>

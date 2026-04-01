@@ -1,0 +1,370 @@
+---
+title: "Query"
+description: "Build query strings to filter, sort, and paginate Appwrite results."
+---
+
+The `Query` class provides static helper methods that generate query strings accepted by list methods across all Appwrite services. Pass an array of query strings to the `queries` parameter of any list method.
+
+```typescript
+import { Client, Databases, Query } from 'node-appwrite';
+
+const databases = new Databases(client);
+
+const result = await databases.listDocuments('db_id', 'col_id', {
+    queries: [
+        Query.equal('status', 'active'),
+        Query.orderDesc('$createdAt'),
+        Query.limit(25),
+    ]
+});
+```
+
+## Comparison
+
+### `Query.equal(attribute, value)`
+
+Filter resources where `attribute` equals `value`.
+
+```typescript
+Query.equal('status', 'active')
+Query.equal('age', 30)
+Query.equal('verified', true)
+```
+
+### `Query.notEqual(attribute, value)`
+
+Filter resources where `attribute` does not equal `value`.
+
+```typescript
+Query.notEqual('role', 'admin')
+```
+
+### `Query.lessThan(attribute, value)`
+
+Filter where `attribute` is less than `value`.
+
+```typescript
+Query.lessThan('price', 100)
+```
+
+### `Query.lessThanEqual(attribute, value)`
+
+Filter where `attribute` is less than or equal to `value`.
+
+```typescript
+Query.lessThanEqual('score', 50)
+```
+
+### `Query.greaterThan(attribute, value)`
+
+Filter where `attribute` is greater than `value`.
+
+```typescript
+Query.greaterThan('views', 1000)
+```
+
+### `Query.greaterThanEqual(attribute, value)`
+
+Filter where `attribute` is greater than or equal to `value`.
+
+```typescript
+Query.greaterThanEqual('rating', 4)
+```
+
+### `Query.between(attribute, start, end)`
+
+Filter where `attribute` is between `start` and `end` (inclusive).
+
+```typescript
+Query.between('price', 10, 50)
+Query.between('$createdAt', '2024-01-01', '2024-12-31')
+```
+
+### `Query.notBetween(attribute, start, end)`
+
+Filter where `attribute` is outside the range `start`–`end`.
+
+```typescript
+Query.notBetween('age', 18, 65)
+```
+
+### `Query.isNull(attribute)`
+
+Filter where `attribute` is null.
+
+```typescript
+Query.isNull('deletedAt')
+```
+
+### `Query.isNotNull(attribute)`
+
+Filter where `attribute` is not null.
+
+```typescript
+Query.isNotNull('verifiedAt')
+```
+
+### `Query.regex(attribute, pattern)`
+
+Filter where `attribute` matches the regular expression `pattern`.
+
+```typescript
+Query.regex('email', '^[a-z]+@example\\.com$')
+```
+
+## String
+
+### `Query.startsWith(attribute, value)`
+
+```typescript
+Query.startsWith('name', 'App')
+```
+
+### `Query.endsWith(attribute, value)`
+
+```typescript
+Query.endsWith('email', '@example.com')
+```
+
+### `Query.notStartsWith(attribute, value)`
+
+```typescript
+Query.notStartsWith('slug', 'draft-')
+```
+
+### `Query.notEndsWith(attribute, value)`
+
+```typescript
+Query.notEndsWith('filename', '.tmp')
+```
+
+### `Query.contains(attribute, value)`
+
+Filter where `attribute` contains `value` as a substring (strings) or element (arrays).
+
+```typescript
+Query.contains('bio', 'engineer')
+```
+
+### `Query.notContains(attribute, value)`
+
+```typescript
+Query.notContains('tags', 'spam')
+```
+
+### `Query.search(attribute, value)`
+
+Full-text search on `attribute` for `value`. Requires a fulltext index on the attribute.
+
+```typescript
+Query.search('content', 'appwrite sdk')
+```
+
+<Note>
+`Query.search` requires a fulltext index to be created on the attribute in your Appwrite collection.
+</Note>
+
+### `Query.notSearch(attribute, value)`
+
+Inverse full-text search. Requires a fulltext index.
+
+```typescript
+Query.notSearch('content', 'deprecated')
+```
+
+## Arrays
+
+### `Query.containsAny(attribute, values)`
+
+Filter where `attribute` contains at least one of the given values (for array attributes).
+
+```typescript
+Query.containsAny('tags', ['nodejs', 'typescript'])
+```
+
+### `Query.containsAll(attribute, values)`
+
+Filter where `attribute` contains all of the given values.
+
+```typescript
+Query.containsAll('permissions', ['read', 'write'])
+```
+
+### `Query.elemMatch(attribute, queries)`
+
+Filter array elements where at least one element matches all the specified queries.
+
+```typescript
+Query.elemMatch('items', [
+    Query.equal('type', 'book'),
+    Query.greaterThan('price', 10),
+])
+```
+
+## Attribute existence
+
+### `Query.exists(attributes)`
+
+Filter resources where all specified attributes exist.
+
+```typescript
+Query.exists(['email', 'phone'])
+```
+
+### `Query.notExists(attributes)`
+
+Filter resources where specified attributes do not exist.
+
+```typescript
+Query.notExists(['deletedAt'])
+```
+
+## Sorting
+
+### `Query.orderAsc(attribute)`
+
+Sort results by `attribute` ascending.
+
+```typescript
+Query.orderAsc('name')
+```
+
+### `Query.orderDesc(attribute)`
+
+Sort results by `attribute` descending.
+
+```typescript
+Query.orderDesc('$createdAt')
+```
+
+### `Query.orderRandom()`
+
+Return results in random order.
+
+```typescript
+Query.orderRandom()
+```
+
+## Pagination
+
+### `Query.limit(limit)`
+
+Return at most `limit` results.
+
+```typescript
+Query.limit(25)
+```
+
+### `Query.offset(offset)`
+
+Skip the first `offset` results.
+
+```typescript
+Query.offset(50)
+```
+
+### `Query.cursorAfter(documentId)`
+
+Return results after the document with `documentId` (cursor-based pagination).
+
+```typescript
+Query.cursorAfter('last_doc_id')
+```
+
+### `Query.cursorBefore(documentId)`
+
+Return results before the document with `documentId`.
+
+```typescript
+Query.cursorBefore('first_doc_id')
+```
+
+<Tip>
+Cursor-based pagination (`cursorAfter` / `cursorBefore`) is more efficient than offset-based pagination for large datasets.
+</Tip>
+
+## Selection
+
+### `Query.select(attributes)`
+
+Return only the specified attributes in each result.
+
+```typescript
+Query.select(['name', 'email', '$id'])
+```
+
+## Logical operators
+
+### `Query.or(queries)`
+
+Combine multiple queries using logical OR.
+
+```typescript
+Query.or([
+    Query.equal('status', 'active'),
+    Query.equal('status', 'pending'),
+])
+```
+
+### `Query.and(queries)`
+
+Combine multiple queries using logical AND (same as passing multiple queries in an array, but explicit).
+
+```typescript
+Query.and([
+    Query.greaterThan('age', 18),
+    Query.equal('verified', true),
+])
+```
+
+## Date helpers
+
+These are convenience wrappers around comparison queries using the `$createdAt` and `$updatedAt` system attributes.
+
+| Method | Equivalent |
+|--------|-----------|
+| `Query.createdBefore(date)` | `Query.lessThan('$createdAt', date)` |
+| `Query.createdAfter(date)` | `Query.greaterThan('$createdAt', date)` |
+| `Query.createdBetween(start, end)` | `Query.between('$createdAt', start, end)` |
+| `Query.updatedBefore(date)` | `Query.lessThan('$updatedAt', date)` |
+| `Query.updatedAfter(date)` | `Query.greaterThan('$updatedAt', date)` |
+| `Query.updatedBetween(start, end)` | `Query.between('$updatedAt', start, end)` |
+
+```typescript
+// Documents created in 2024
+Query.createdBetween('2024-01-01T00:00:00.000Z', '2024-12-31T23:59:59.999Z')
+```
+
+## Geospatial
+
+For collections with geospatial attributes. The `values` parameter is a `[longitude, latitude]` coordinate pair. `distance` is in meters by default (pass `false` for the `meters` parameter to use kilometers).
+
+### `Query.distanceEqual(attribute, values, distance, meters?)`
+
+```typescript
+Query.distanceEqual('location', [-73.935242, 40.730610], 5000) // within 5km
+```
+
+### `Query.distanceNotEqual(attribute, values, distance, meters?)`
+
+### `Query.distanceGreaterThan(attribute, values, distance, meters?)`
+
+### `Query.distanceLessThan(attribute, values, distance, meters?)`
+
+### `Query.intersects(attribute, values)`
+
+Filter where `attribute` intersects a geometry.
+
+### `Query.notIntersects(attribute, values)`
+
+### `Query.crosses(attribute, values)`
+
+### `Query.notCrosses(attribute, values)`
+
+### `Query.overlaps(attribute, values)`
+
+### `Query.notOverlaps(attribute, values)`
+
+### `Query.touches(attribute, values)`
+
+### `Query.notTouches(attribute, values)`

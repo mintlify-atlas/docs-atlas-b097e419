@@ -1,0 +1,111 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Appwrite Node.js SDK",
+  "projectDescription": "Official server-side Node.js SDK for integrating with Appwrite's backend-as-a-service platform, providing typed access to authentication, databases, storage, functions, messaging, and more.",
+  "theme": "luma",
+  "primaryColor": "#fc346c",
+  "lightColor": "#ececf4",
+  "darkColor": "#fc697e",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/client",
+              "concepts/queries",
+              "concepts/permissions",
+              "concepts/error-handling"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/typescript",
+              "guides/file-uploads",
+              "guides/realtime",
+              "guides/migration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Services",
+            "pages": [
+              "api/account",
+              "api/users",
+              "api/databases",
+              "api/storage",
+              "api/functions",
+              "api/messaging",
+              "api/teams",
+              "api/sites",
+              "api/health"
+            ]
+          },
+          {
+            "group": "Helpers",
+            "pages": [
+              "api/id",
+              "api/query",
+              "api/permission",
+              "api/role",
+              "api/enums"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Full TypeScript support with generic type parameters for documents and user preferences",
+    "Covers all Appwrite services: Auth, Databases, Storage, Functions, Messaging, Teams, Sites, Health",
+    "Built-in chunked file uploads with progress callbacks",
+    "Powerful Query builder with filtering, sorting, pagination, and geospatial support",
+    "Role and Permission helpers for fine-grained access control",
+    "BigInt support for large integer values via json-bigint",
+    "User impersonation support for admin workflows",
+    "Works across Node.js, Deno, and WinterCG-compatible edge runtimes"
+  ],
+  "publicApiSurface": [
+    "Client",
+    "Account",
+    "Users",
+    "Databases",
+    "Storage",
+    "Functions",
+    "Messaging",
+    "Teams",
+    "Sites",
+    "Health",
+    "Avatars",
+    "Locale",
+    "Graphql",
+    "Backups",
+    "Project",
+    "Webhooks",
+    "Tokens",
+    "Activities",
+    "TablesDB",
+    "Query",
+    "Permission",
+    "Role",
+    "ID",
+    "AppwriteException",
+    "Operator",
+    "Condition"
+  ]
+}

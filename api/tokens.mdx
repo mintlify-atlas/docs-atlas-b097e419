@@ -1,0 +1,110 @@
+---
+title: "Tokens"
+description: "Create and manage time-limited access tokens for storage files."
+---
+
+The `Tokens` service lets you create short-lived access tokens that grant time-limited access to a specific file without requiring authentication. Tokens can be appended as query parameters to file download URLs.
+
+## Initialization
+
+```typescript
+import { Client, Tokens } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const tokens = new Tokens(client);
+```
+
+## Methods
+
+### `list(bucketId, fileId, queries?, total?)`
+
+List all tokens for a specific file.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `bucketId` | `string` | Yes | Storage bucket ID. |
+| `fileId` | `string` | Yes | File ID. |
+| `queries` | `string[]` | No | Query strings (filter on `expire`). |
+| `total` | `boolean` | No | Include total count. |
+
+**Returns:** `Promise<Models.ResourceTokenList>`
+
+```typescript
+const tokenList = await tokens.list({
+    bucketId: 'my_bucket',
+    fileId: 'file_abc123'
+});
+```
+
+### `createFileToken(bucketId, fileId, expire?)`
+
+Create a new time-limited access token for a file. The token can be passed as a URL query parameter to access the file without authentication.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `bucketId` | `string` | Yes | Storage bucket ID. |
+| `fileId` | `string` | Yes | File ID. |
+| `expire` | `string` | No | ISO 8601 expiry date/time. |
+
+**Returns:** `Promise<Models.ResourceToken>`
+
+```typescript
+const token = await tokens.createFileToken({
+    bucketId: 'my_bucket',
+    fileId: 'file_abc123',
+    expire: '2025-12-31T23:59:59.999Z'
+});
+
+// Use the token to construct a public URL
+console.log(token.secret); // the token value to append as ?token=...
+```
+
+### `get(tokenId)`
+
+Get a token by its unique ID.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tokenId` | `string` | Yes | Token ID. |
+
+**Returns:** `Promise<Models.ResourceToken>`
+
+```typescript
+const token = await tokens.get({ tokenId: 'token_id' });
+```
+
+### `update(tokenId, expire?)`
+
+Update a token's expiry date.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tokenId` | `string` | Yes | Token ID. |
+| `expire` | `string` | No | New ISO 8601 expiry date. |
+
+**Returns:** `Promise<Models.ResourceToken>`
+
+```typescript
+const updated = await tokens.update({
+    tokenId: 'token_id',
+    expire: '2026-06-01T00:00:00.000Z'
+});
+```
+
+### `delete(tokenId)`
+
+Delete a token permanently.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tokenId` | `string` | Yes | Token ID. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await tokens.delete({ tokenId: 'token_id' });
+```

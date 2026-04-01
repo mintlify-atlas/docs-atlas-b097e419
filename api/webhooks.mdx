@@ -1,0 +1,130 @@
+---
+title: "Webhooks"
+description: "Create and manage project webhooks to receive Appwrite event notifications."
+---
+
+The `Webhooks` service lets you configure HTTP endpoints that Appwrite calls when specific events occur in your project — such as user creation, document updates, or file uploads.
+
+## Initialization
+
+```typescript
+import { Client, Webhooks } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const webhooks = new Webhooks(client);
+```
+
+## Methods
+
+### `list(queries?, total?)`
+
+List all webhooks in the project.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `queries` | `string[]` | No | Filter on `name`, `url`, `enabled`, etc. |
+| `total` | `boolean` | No | Include total count. |
+
+**Returns:** `Promise<Models.WebhookList>`
+
+```typescript
+const list = await webhooks.list();
+list.webhooks.forEach(w => console.log(w.name, w.url));
+```
+
+### `create(webhookId, url, name, events, enabled?, security?, httpUser?, httpPass?)`
+
+Create a new webhook.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `webhookId` | `string` | Yes | Unique ID. Use `ID.unique()`. |
+| `url` | `string` | Yes | HTTPS endpoint to receive events. |
+| `name` | `string` | Yes | Webhook name (max 128 chars). |
+| `events` | `string[]` | Yes | List of event strings (max 100). |
+| `enabled` | `boolean` | No | Enable/disable the webhook. |
+| `security` | `boolean` | No | Verify SSL certificate. |
+| `httpUser` | `string` | No | HTTP Basic Auth username. |
+| `httpPass` | `string` | No | HTTP Basic Auth password. |
+
+**Returns:** `Promise<Models.Webhook>`
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const webhook = await webhooks.create({
+    webhookId: ID.unique(),
+    url: 'https://my-server.example.com/webhook',
+    name: 'User Events',
+    events: [
+        'users.*.create',
+        'users.*.delete',
+    ],
+    enabled: true,
+    security: true,
+});
+```
+
+### `get(webhookId)`
+
+Get a webhook by ID.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `webhookId` | `string` | Yes | Webhook ID. |
+
+**Returns:** `Promise<Models.Webhook>`
+
+```typescript
+const webhook = await webhooks.get({ webhookId: 'hook_id' });
+```
+
+### `update(webhookId, url, name, events, enabled?, security?, httpUser?, httpPass?)`
+
+Update an existing webhook.
+
+**Returns:** `Promise<Models.Webhook>`
+
+```typescript
+await webhooks.update({
+    webhookId: 'hook_id',
+    url: 'https://my-server.example.com/webhook',
+    name: 'Updated Webhook',
+    events: ['databases.*.documents.*.create'],
+    enabled: true,
+    security: true,
+});
+```
+
+### `delete(webhookId)`
+
+Delete a webhook.
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await webhooks.delete({ webhookId: 'hook_id' });
+```
+
+### `updateSignature(webhookId)`
+
+Regenerate the HMAC signature secret for a webhook. Use this if the existing signature is compromised.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `webhookId` | `string` | Yes | Webhook ID. |
+
+**Returns:** `Promise<Models.Webhook>`
+
+```typescript
+const updated = await webhooks.updateSignature({ webhookId: 'hook_id' });
+console.log(updated.signatureKey); // new HMAC signing secret
+```
+
+<Tip>
+Verify incoming webhook requests by computing an HMAC-SHA1 signature of the raw request body using the `signatureKey` and comparing it to the `X-Appwrite-Webhook-Signature` header.
+</Tip>

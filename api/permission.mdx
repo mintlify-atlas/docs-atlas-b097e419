@@ -1,0 +1,120 @@
+---
+title: "Permission"
+description: "Generate permission strings to control access to Appwrite resources."
+---
+
+The `Permission` class provides static methods that generate permission strings. These strings are passed in the `permissions` array when creating or updating resources like documents, files, and buckets.
+
+```typescript
+import { Permission, Role } from 'node-appwrite';
+
+// Grant any user read access and authenticated users write access
+const permissions = [
+    Permission.read(Role.any()),
+    Permission.write(Role.users()),
+];
+```
+
+## Methods
+
+### `Permission.read(role)`
+
+Grants read access to the specified role.
+
+**Returns:** `string` — e.g. `read("any")`
+
+```typescript
+Permission.read(Role.any())        // 'read("any")'
+Permission.read(Role.users())      // 'read("users")'
+Permission.read(Role.user('abc'))  // 'read("user:abc")'
+```
+
+### `Permission.create(role)`
+
+Grants permission to create new resources (documents, files).
+
+**Returns:** `string` — e.g. `create("users")`
+
+```typescript
+Permission.create(Role.users())
+```
+
+### `Permission.update(role)`
+
+Grants permission to update existing resources.
+
+**Returns:** `string` — e.g. `update("user:abc123")`
+
+```typescript
+Permission.update(Role.user('abc123'))
+```
+
+### `Permission.delete(role)`
+
+Grants permission to delete resources.
+
+**Returns:** `string` — e.g. `delete("team:xyz")`
+
+```typescript
+Permission.delete(Role.team('xyz'))
+```
+
+### `Permission.write(role)`
+
+Grants write access — an alias for `update`, `delete`, and possibly `create`. 
+
+<Warning>
+Do not combine `Permission.write()` with `Permission.create()`, `Permission.update()`, or `Permission.delete()`. Use either `write` or the granular permissions, not both.
+</Warning>
+
+**Returns:** `string` — e.g. `write("users")`
+
+```typescript
+Permission.write(Role.users())
+```
+
+## Example: creating a document with permissions
+
+```typescript
+import { Client, Databases, Permission, Role, ID } from 'node-appwrite';
+
+const databases = new Databases(client);
+
+const doc = await databases.createDocument(
+    'my_database',
+    'my_collection',
+    ID.unique(),
+    { title: 'Hello World', body: 'Content here' },
+    {
+        permissions: [
+            Permission.read(Role.any()),           // anyone can read
+            Permission.update(Role.user('user123')), // only this user can update
+            Permission.delete(Role.user('user123')), // only this user can delete
+        ]
+    }
+);
+```
+
+## Example: team-scoped bucket
+
+```typescript
+import { Client, Storage, Permission, Role, ID } from 'node-appwrite';
+
+const storage = new Storage(client);
+
+const bucket = await storage.createBucket(
+    ID.unique(),
+    'Team Assets',
+    {
+        permissions: [
+            Permission.read(Role.team('team_id')),          // team members can read
+            Permission.create(Role.team('team_id', 'owner')), // only owners can upload
+            Permission.delete(Role.team('team_id', 'owner')), // only owners can delete
+        ]
+    }
+);
+```
+
+<Tip>
+See the [Role](/api/role) reference for all available role helpers, and the [Permissions guide](/concepts/permissions) for a full explanation of Appwrite's permission model.
+</Tip>

@@ -1,0 +1,46 @@
+---
+title: "Activities"
+description: "Query project activity and audit event logs."
+---
+
+The `Activities` service lets you list and query activity events for your project — useful for audit trails and monitoring user actions.
+
+## Initialization
+
+```typescript
+import { Client, Activities } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const activities = new Activities(client);
+```
+
+## Methods
+
+### `listEvents(queries?)`
+
+List all activity events for the project, optionally filtered by query.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `queries` | `string` | No | Query string to filter events (e.g. by `userId`, `teamId`). |
+
+**Returns:** `Promise<Models.ActivityEventList>`
+
+```typescript
+const events = await activities.listEvents();
+events.events.forEach(e => {
+    console.log(e.userId, e.event, e.time);
+});
+```
+
+Filter by a specific user:
+
+```typescript
+const userEvents = await activities.listEvents({
+    queries: JSON.stringify({ userId: 'user_abc' })
+});
+```

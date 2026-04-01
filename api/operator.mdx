@@ -1,0 +1,245 @@
+---
+title: "Operator"
+description: "Perform atomic operations on document and row attributes."
+---
+
+The `Operator` class generates atomic operation strings for use with `updateDocument` and `updateRow`. Pass operator strings in the `operations` parameter to atomically mutate specific fields without reading the document first.
+
+The `Condition` enum is used with `Operator.arrayFilter` to express filter conditions on array elements.
+
+```typescript
+import { Client, Databases, Operator } from 'node-appwrite';
+
+const databases = new Databases(client);
+
+await databases.updateDocument('db_id', 'col_id', 'doc_id', {
+    operations: [
+        Operator.increment(1),         // increment a counter
+        Operator.arrayAppend(['tag']),  // append to an array field
+    ]
+});
+```
+
+## Initialization
+
+```typescript
+import { Operator, Condition } from 'node-appwrite';
+```
+
+## Numeric operators
+
+### `Operator.increment(value?, max?)`
+
+Increment a numeric attribute by `value` (default `1`). Optionally cap at `max`.
+
+```typescript
+Operator.increment()        // +1
+Operator.increment(5)       // +5
+Operator.increment(1, 100)  // +1, capped at 100
+```
+
+### `Operator.decrement(value?, min?)`
+
+Decrement a numeric attribute by `value` (default `1`). Optionally floor at `min`.
+
+```typescript
+Operator.decrement()       // -1
+Operator.decrement(3, 0)   // -3, minimum 0
+```
+
+### `Operator.multiply(factor, max?)`
+
+Multiply a numeric attribute by `factor`. Optionally cap the result at `max`.
+
+```typescript
+Operator.multiply(2)       // double the value
+Operator.multiply(1.5, 99) // ×1.5, capped at 99
+```
+
+### `Operator.divide(divisor, min?)`
+
+Divide a numeric attribute by `divisor`. Optionally floor the result at `min`.
+
+<Warning>
+Throws an error if `divisor` is `0`.
+</Warning>
+
+```typescript
+Operator.divide(2)     // halve the value
+Operator.divide(4, 0)  // ÷4, minimum 0
+```
+
+### `Operator.modulo(divisor)`
+
+Apply modulo operation on a numeric attribute.
+
+```typescript
+Operator.modulo(10)  // value % 10
+```
+
+### `Operator.power(exponent, max?)`
+
+Raise a numeric attribute to `exponent`. Optionally cap at `max`.
+
+```typescript
+Operator.power(2)       // value²
+Operator.power(3, 1000) // value³, capped at 1000
+```
+
+## Array operators
+
+### `Operator.arrayAppend(values)`
+
+Append values to the end of an array attribute.
+
+```typescript
+Operator.arrayAppend(['nodejs', 'typescript'])
+```
+
+### `Operator.arrayPrepend(values)`
+
+Prepend values to the beginning of an array attribute.
+
+```typescript
+Operator.arrayPrepend(['first'])
+```
+
+### `Operator.arrayInsert(index, value)`
+
+Insert a value at a specific index in an array attribute.
+
+```typescript
+Operator.arrayInsert(2, 'newItem')
+```
+
+### `Operator.arrayRemove(value)`
+
+Remove the first occurrence of `value` from an array attribute.
+
+```typescript
+Operator.arrayRemove('oldTag')
+```
+
+### `Operator.arrayUnique()`
+
+Remove duplicate values from an array attribute.
+
+```typescript
+Operator.arrayUnique()
+```
+
+### `Operator.arrayIntersect(values)`
+
+Keep only values that exist in both the current array and the provided array.
+
+```typescript
+Operator.arrayIntersect(['a', 'b', 'c'])
+```
+
+### `Operator.arrayDiff(values)`
+
+Remove values from the array that exist in the provided array.
+
+```typescript
+Operator.arrayDiff(['remove_me', 'also_remove'])
+```
+
+### `Operator.arrayFilter(condition, value?)`
+
+Filter array elements based on a `Condition`. Uses the `Condition` enum.
+
+```typescript
+import { Operator, Condition } from 'node-appwrite';
+
+Operator.arrayFilter(Condition.GreaterThan, 10)   // keep elements > 10
+Operator.arrayFilter(Condition.Equal, 'active')   // keep elements equal to 'active'
+Operator.arrayFilter(Condition.IsNotNull)         // remove null elements
+```
+
+## String operators
+
+### `Operator.stringConcat(value)`
+
+Concatenate `value` to the end of a string attribute.
+
+```typescript
+Operator.stringConcat(' World')  // "Hello" → "Hello World"
+```
+
+### `Operator.stringReplace(search, replace)`
+
+Replace all occurrences of `search` with `replace` in a string attribute.
+
+```typescript
+Operator.stringReplace('foo', 'bar')
+```
+
+## Boolean operators
+
+### `Operator.toggle()`
+
+Toggle a boolean attribute between `true` and `false`.
+
+```typescript
+Operator.toggle()
+```
+
+## Date operators
+
+### `Operator.dateAddDays(days)`
+
+Add `days` to a date attribute.
+
+```typescript
+Operator.dateAddDays(7)   // add one week
+```
+
+### `Operator.dateSubDays(days)`
+
+Subtract `days` from a date attribute.
+
+```typescript
+Operator.dateSubDays(30)  // subtract 30 days
+```
+
+### `Operator.dateSetNow()`
+
+Set a date attribute to the current date and time.
+
+```typescript
+Operator.dateSetNow()
+```
+
+## `Condition` enum
+
+Used with `Operator.arrayFilter` to specify filter conditions.
+
+| Member | Value |
+|--------|-------|
+| `Condition.Equal` | `'equal'` |
+| `Condition.NotEqual` | `'notEqual'` |
+| `Condition.GreaterThan` | `'greaterThan'` |
+| `Condition.GreaterThanEqual` | `'greaterThanEqual'` |
+| `Condition.LessThan` | `'lessThan'` |
+| `Condition.LessThanEqual` | `'lessThanEqual'` |
+| `Condition.Contains` | `'contains'` |
+| `Condition.IsNull` | `'isNull'` |
+| `Condition.IsNotNull` | `'isNotNull'` |
+
+## Combined example
+
+```typescript
+import { Client, Databases, Operator, Condition, ID } from 'node-appwrite';
+
+const databases = new Databases(client);
+
+// Atomically update a post document
+await databases.updateDocument('blog_db', 'posts', 'post_123', {
+    operations: [
+        Operator.increment(1),                           // bump view count
+        Operator.arrayAppend(['nodejs']),                // add a tag
+        Operator.arrayFilter(Condition.IsNotNull),       // clean nulls from array
+        Operator.dateSetNow(),                           // set updatedAt to now
+    ]
+});
+```

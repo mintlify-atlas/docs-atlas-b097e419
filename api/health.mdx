@@ -1,0 +1,287 @@
+---
+title: "Health"
+description: "Monitor Appwrite server components, queues, and infrastructure health."
+---
+
+The `Health` service provides endpoints to check the status of every Appwrite subsystem — HTTP server, database, cache, pub-sub, storage, antivirus, queue depths, and more. Use these endpoints for uptime monitoring and alerting.
+
+<Note>
+  All Health endpoints require a **Server SDK** with a valid API key. Health checks are not available from client applications.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, Health } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const health = new Health(client);
+```
+
+## Methods
+
+### `get`
+
+Check that the Appwrite HTTP server is up and responding.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthStatus>`
+
+```typescript
+const status = await health.get();
+console.log(status.status); // "pass" or "fail"
+```
+
+---
+
+### `getAntivirus`
+
+Check that the Appwrite Antivirus server is reachable.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthAntivirus>`
+
+```typescript
+const av = await health.getAntivirus();
+console.log(av.status, av.version);
+```
+
+---
+
+### `getCache`
+
+Check that all in-memory cache (Redis) servers are up and reachable.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthStatusList>`
+
+```typescript
+const cache = await health.getCache();
+cache.statuses.forEach(s => console.log(s.name, s.status));
+```
+
+---
+
+### `getDB`
+
+Check that all database servers are up and reachable.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthStatusList>`
+
+```typescript
+const db = await health.getDB();
+db.statuses.forEach(s => console.log(s.name, s.status));
+```
+
+---
+
+### `getPubSub`
+
+Check that all pub-sub servers are up and reachable.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthStatusList>`
+
+```typescript
+const pubsub = await health.getPubSub();
+```
+
+---
+
+### `getStorage`
+
+Check that the primary storage device is accessible.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthStatus>`
+
+```typescript
+const storage = await health.getStorage();
+console.log(storage.status);
+```
+
+---
+
+### `getStorageLocal`
+
+Check that the local storage device is accessible.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthStatus>`
+
+```typescript
+const local = await health.getStorageLocal();
+```
+
+---
+
+### `getTime`
+
+Verify that the Appwrite server clock is synchronized with a remote NTP server (Google NTP).
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.HealthTime>`
+
+```typescript
+const time = await health.getTime();
+console.log(time.remoteTime, time.localTime, time.diff);
+```
+
+<Tip>
+  A large `diff` value indicates clock drift. This can affect time-sensitive operations such as JWT expiry and scheduled messages.
+</Tip>
+
+---
+
+### `getCertificate`
+
+Get the TLS certificate details for a given domain.
+
+| Parameter | Type     | Required | Description                          |
+|-----------|----------|----------|--------------------------------------|
+| `domain`  | `string` | No       | Domain name to check the certificate for. |
+
+**Returns:** `Promise<Models.HealthCertificate>`
+
+```typescript
+const cert = await health.getCertificate({ domain: 'cloud.appwrite.io' });
+console.log(cert.domain, cert.expiry);
+```
+
+---
+
+### `getFailedJobs`
+
+Return the count of failed jobs in a named internal queue. Returns a server error when the threshold is reached or exceeded.
+
+| Parameter   | Type     | Required | Description                                                          |
+|-------------|----------|----------|----------------------------------------------------------------------|
+| `name`      | `Name`   | Yes      | Name enum value identifying the queue.                               |
+| `threshold` | `number` | No       | Error threshold. Defaults to `5000`.                                 |
+
+**Returns:** `Promise<Models.HealthQueue>`
+
+```typescript
+import { Name } from 'node-appwrite';
+
+const failed = await health.getFailedJobs({
+    name: Name.DatabasesCreate,
+    threshold: 100,
+});
+console.log(failed.size);
+```
+
+---
+
+### `getQueueAudits`
+
+Get the number of audit log entries waiting to be processed.
+
+| Parameter   | Type     | Required | Description                          |
+|-------------|----------|----------|--------------------------------------|
+| `threshold` | `number` | No       | Error threshold. Defaults to `5000`. |
+
+**Returns:** `Promise<Models.HealthQueue>`
+
+```typescript
+const audits = await health.getQueueAudits({ threshold: 1000 });
+console.log(audits.size);
+```
+
+---
+
+### `getQueueBuilds`
+
+Get the number of site/function builds waiting in the queue.
+
+| Parameter   | Type     | Required | Description                          |
+|-------------|----------|----------|--------------------------------------|
+| `threshold` | `number` | No       | Error threshold. Defaults to `5000`. |
+
+**Returns:** `Promise<Models.HealthQueue>`
+
+```typescript
+const builds = await health.getQueueBuilds();
+```
+
+---
+
+### `getQueueFunctions`
+
+Get the number of pending function executions in the queue.
+
+| Parameter   | Type     | Required | Description                          |
+|-------------|----------|----------|--------------------------------------|
+| `threshold` | `number` | No       | Error threshold. Defaults to `5000`. |
+
+**Returns:** `Promise<Models.HealthQueue>`
+
+```typescript
+const executions = await health.getQueueFunctions();
+console.log(executions.size);
+```
+
+---
+
+## Additional queue methods
+
+Each method below follows the same signature: an optional `threshold: number` parameter (default `5000`) and returns `Promise<Models.HealthQueue>`.
+
+| Method                    | Description                                         |
+|---------------------------|-----------------------------------------------------|
+| `getQueueCertificates`    | Pending Let's Encrypt certificate issuance jobs.    |
+| `getQueueDatabases`       | Pending database change jobs. Accepts optional `name` (queue name) and `threshold`. |
+| `getQueueDeletes`         | Pending background delete jobs.                     |
+| `getQueueLogs`            | Pending log write jobs.                             |
+| `getQueueMails`           | Pending mail delivery jobs.                         |
+| `getQueueMessaging`       | Pending messaging dispatch jobs.                    |
+| `getQueueMigrations`      | Pending migration jobs.                             |
+| `getQueueStatsResources`  | Pending stats-resources metric jobs.                |
+| `getQueueUsage`           | Pending usage metric jobs.                          |
+| `getQueueWebhooks`        | Pending webhook delivery jobs.                      |
+
+```typescript
+// Example: alert when messaging queue is backed up
+const msgQueue = await health.getQueueMessaging({ threshold: 500 });
+if (msgQueue.size >= 500) {
+    console.error('Messaging queue threshold reached!', msgQueue.size);
+}
+```
+
+---
+
+### `getConsolePausing`
+
+Check whether projects are approaching the inactivity pause threshold.
+
+| Parameter        | Type     | Required | Description                                                                      |
+|------------------|----------|----------|----------------------------------------------------------------------------------|
+| `threshold`      | `number` | No       | Percentage of projects near the pause threshold that triggers an error. Default `10`. |
+| `inactivityDays` | `number` | No       | Days of inactivity before a project is paused. Should match the plan setting. Default `7`. |
+
+**Returns:** `Promise<Models.HealthStatus>`
+
+```typescript
+const pausing = await health.getConsolePausing({
+    threshold: 20,
+    inactivityDays: 14,
+});
+console.log(pausing.status);
+```
+
+<Note>
+  `getConsolePausing` is primarily used by Appwrite's internal monitoring and Cloud console. Most self-hosted deployments do not need to call this endpoint.
+</Note>

@@ -1,0 +1,140 @@
+---
+title: "Backups"
+description: "Create and manage project backup archives."
+---
+
+The `Backups` service lets you create on-demand backup archives for your Appwrite project's services, and manage backup policies for automated backups.
+
+## Initialization
+
+```typescript
+import { Client, Backups } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const backups = new Backups(client);
+```
+
+## Archive methods
+
+### `listArchives(queries?)`
+
+List all backup archives for the project.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `queries` | `string[]` | No | Filter with Query helpers. |
+
+**Returns:** `Promise<Models.BackupArchiveList>`
+
+```typescript
+const archives = await backups.listArchives();
+```
+
+### `createArchive(services, resourceId?)`
+
+Create a new backup archive asynchronously. Specify which services to include.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `services` | `BackupServices[]` | Yes | Services to back up. |
+| `resourceId` | `string` | No | Limit backup to a single resource ID. |
+
+**Returns:** `Promise<Models.BackupArchive>`
+
+```typescript
+import { BackupServices } from 'node-appwrite';
+
+const archive = await backups.createArchive({
+    services: [BackupServices.Databases, BackupServices.Storage]
+});
+```
+
+The `BackupServices` enum values:
+
+| Member | Value |
+|--------|-------|
+| `BackupServices.Databases` | `'databases'` |
+| `BackupServices.Tablesdb` | `'tablesdb'` |
+| `BackupServices.Documentsdb` | `'documentsdb'` |
+| `BackupServices.Vectorsdb` | `'vectorsdb'` |
+| `BackupServices.Functions` | `'functions'` |
+| `BackupServices.Storage` | `'storage'` |
+
+### `getArchive(archiveId)`
+
+Get a backup archive by ID.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `archiveId` | `string` | Yes | Archive ID. |
+
+**Returns:** `Promise<Models.BackupArchive>`
+
+```typescript
+const archive = await backups.getArchive({ archiveId: 'archive_id' });
+```
+
+### `deleteArchive(archiveId)`
+
+Delete a backup archive.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `archiveId` | `string` | Yes | Archive ID. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await backups.deleteArchive({ archiveId: 'archive_id' });
+```
+
+## Policy methods
+
+### `listPolicies(queries?)`
+
+List backup policies configured for the project.
+
+**Returns:** `Promise<Models.BackupPolicyList>`
+
+```typescript
+const policies = await backups.listPolicies();
+```
+
+### `createPolicy(policyId, services, schedule, retention?, enabled?)`
+
+Create a new backup policy for automated backups.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `policyId` | `string` | Yes | Unique policy ID. |
+| `services` | `BackupServices[]` | Yes | Services to include. |
+| `schedule` | `string` | Yes | Cron expression for backup schedule. |
+| `retention` | `number` | No | Days to retain backups. |
+| `enabled` | `boolean` | No | Enable or disable the policy. |
+
+**Returns:** `Promise<Models.BackupPolicy>`
+
+```typescript
+import { BackupServices, ID } from 'node-appwrite';
+
+const policy = await backups.createPolicy({
+    policyId: ID.unique(),
+    services: [BackupServices.Databases],
+    schedule: '0 2 * * *',  // daily at 2am
+    retention: 30,
+    enabled: true,
+});
+```
+
+### `getPolicy(policyId)` / `updatePolicy(...)` / `deletePolicy(policyId)`
+
+Standard CRUD for backup policies.
+
+```typescript
+const policy = await backups.getPolicy({ policyId: 'policy_id' });
+await backups.deletePolicy({ policyId: 'policy_id' });
+```

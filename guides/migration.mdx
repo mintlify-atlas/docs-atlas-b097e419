@@ -1,0 +1,247 @@
+---
+title: "Migration Guide"
+description: "Upgrade the Appwrite Node.js SDK to the latest version."
+---
+
+This guide covers breaking changes and new features introduced in each major version of `node-appwrite`. Read the relevant section for the version you are upgrading to.
+
+## Upgrading to v23
+
+Install the latest version:
+
+```bash
+npm install node-appwrite@23
+```
+
+### Breaking changes
+
+<Warning>
+The following changes require code updates. Review each item before upgrading.
+</Warning>
+
+#### `$sequence` type changed to `string`
+
+The `$sequence` field on `Document` and `Row` models changed from `number` to `string`. This affects any code that performs arithmetic on sequence values or compares them to number literals.
+
+<CodeGroup>
+
+```typescript before.ts
+// v22 — $sequence was number
+const doc = await databases.getDocument<MyDoc>(dbId, colId, docId);
+if (doc.$sequence > 100) {
+  // ...
+}
+```
+
+```typescript after.ts
+// v23 — $sequence is string
+const doc = await databases.getDocument<MyDoc>(dbId, colId, docId);
+if (parseInt(doc.$sequence, 10) > 100) {
+  // ...
+}
+```
+
+</CodeGroup>
+
+If you store or compare sequence values, update all comparisons to parse the string first, or treat the value as an opaque identifier.
+
+#### `IndexType` enum split into two enums
+
+The single `IndexType` enum has been removed and replaced with two separate enums:
+
+- `DatabasesIndexType` — for use with the `Databases` service (includes the new `Spatial` value)
+- `TablesDBIndexType` — for use with the `TablesDB` service
+
+<CodeGroup>
+
+```typescript before.ts
+// v22
+import { IndexType } from 'node-appwrite';
+
+await databases.createIndex({
+  databaseId,
+  collectionId,
+  key: 'title_idx',
+  type: IndexType.Key,
+  attributes: ['title'],
+});
+```
+
+```typescript after.ts
+// v23
+import { DatabasesIndexType } from 'node-appwrite';
+
+await databases.createIndex({
+  databaseId,
+  collectionId,
+  key: 'title_idx',
+  type: DatabasesIndexType.Key,
+  attributes: ['title'],
+});
+```
+
+</CodeGroup>
+
+For spatial indexes (new in v23):
+
+```typescript
+import { DatabasesIndexType } from 'node-appwrite';
+
+await databases.createIndex({
+  databaseId,
+  collectionId,
+  key: 'location_idx',
+  type: DatabasesIndexType.Spatial,
+  attributes: ['coordinates'],
+});
+```
+
+#### `specification` replaced with `buildSpecification` and `runtimeSpecification`
+
+The `specification` parameter in `Functions.create()`, `Functions.update()`, `Sites.create()`, and `Sites.update()` has been split into two separate parameters: `buildSpecification` and `runtimeSpecification`. These allow you to independently size the build and execution environments.
+
+<CodeGroup>
+
+```typescript before.ts
+// v22
+await functions.create({
+  functionId: 'unique()',
+  name: 'My Function',
+  runtime: 'node-22',
+  specification: 's-1vcpu-512mb',
+});
+```
+
+```typescript after.ts
+// v23
+await functions.create({
+  functionId: 'unique()',
+  name: 'My Function',
+  runtime: 'node-22',
+  buildSpecification: 's-2vcpu-1gb',    // resources during build
+  runtimeSpecification: 's-1vcpu-512mb', // resources during execution
+});
+```
+
+</CodeGroup>
+
+The same change applies to `functions.update()`, `sites.create()`, and `sites.update()`.
+
+---
+
+### New features in v23
+
+#### `Project` service
+
+A new `Project` service provides CRUD operations for project-level environment variables.
+
+```typescript
+import { Client, Project } from 'node-appwrite';
+
+const project = new Project(client);
+
+// Create a project variable
+const variable = await project.createVariable({
+  key: 'STRIPE_SECRET_KEY',
+  value: 'sk_live_...',
+  secret: true,
+});
+
+// List all project variables
+const vars = await project.listVariables();
+```
+
+#### `Webhooks` service
+
+A new `Webhooks` service manages project webhooks programmatically. See the [Events & Webhooks guide](/guides/realtime) for full documentation.
+
+```typescript
+import { Webhooks } from 'node-appwrite';
+
+const webhooks = new Webhooks(client);
+
+const webhook = await webhooks.create({
+  webhookId: 'unique()',
+  name: 'My webhook',
+  url: 'https://example.com/hook',
+  events: ['users.*.create'],
+  enabled: true,
+  security: true,
+});
+```
+
+#### User impersonation
+
+The `Client` class now supports impersonation headers, allowing you to act on behalf of another user on an already-authenticated request.
+
+```typescript
+// Impersonate by user ID
+client.setImpersonateUserId('<USER_ID>');
+
+// Impersonate by email
+client.setImpersonateUserEmail('user@example.com');
+
+// Impersonate by phone
+client.setImpersonateUserPhone('+16175551212');
+```
+
+<Warning>
+Impersonation requires the requesting session to have the impersonator capability. Providing only an API key is not sufficient. All actions performed during impersonation are attributed to the original impersonator in audit logs.
+</Warning>
+
+The `Users` service also gains `updateImpersonator()` to grant or revoke impersonation capability for a user:
+
+```typescript
+await users.updateImpersonator({
+  userId: '<USER_ID>',
+  impersonator: true, // grant
+});
+```
+
+#### `getHeaders()` on `Client`
+
+Retrieve a copy of the current request headers, including any authentication headers, for debugging or logging:
+
+```typescript
+const headers = client.getHeaders();
+console.log(headers);
+// {
+//   'X-Appwrite-Project': '...',
+//   'X-Appwrite-Key': '...',
+//   'user-agent': 'AppwriteNodeJSSDK/23.1.0 ...',
+//   ...
+// }
+```
+
+<Warning>
+The returned object includes your secret API key. Do not log or transmit it to untrusted parties.
+</Warning>
+
+---
+
+## Upgrading to v22
+
+```bash
+npm install node-appwrite@22
+```
+
+The `Output` enum was removed. Use `ImageFormat` instead:
+
+```typescript
+// Before
+import { Output } from 'node-appwrite'; // removed
+
+// After
+import { ImageFormat } from 'node-appwrite';
+```
+
+---
+
+<CardGroup cols={2}>
+  <Card title="TypeScript guide" icon="code" href="/guides/typescript">
+    Use generics for type-safe documents and user preferences.
+  </Card>
+  <Card title="Events & Webhooks" icon="webhook" href="/guides/realtime">
+    Configure the new Webhooks service added in v23.
+  </Card>
+</CardGroup>

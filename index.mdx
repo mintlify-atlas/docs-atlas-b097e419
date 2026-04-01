@@ -1,97 +1,123 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Appwrite Node.js SDK"
+description: "The official server-side Node.js SDK for Appwrite — integrate authentication, databases, storage, functions, messaging, and more into your Node.js applications."
 ---
 
-## Setting up
+The Appwrite Node.js SDK lets you interact with all Appwrite backend services from your server-side Node.js code. It provides full TypeScript support, a fluent client API, and helpers for queries, permissions, and IDs.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Install the SDK and make your first request in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to authenticate your server using API keys.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Core Concepts" icon="book" href="/concepts/client">
+    Understand the Client, Query builder, Permissions, and error handling.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="API Reference" icon="code" href="/api/account">
+    Explore every service and helper class in the SDK.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Get started
 
-Everything you need to create world-class documentation.
+<Steps>
+  <Step title="Install the SDK">
+    Add `node-appwrite` to your project using your preferred package manager.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+    <CodeGroup>
+    ```bash npm
+    npm install node-appwrite
+    ```
+    ```bash yarn
+    yarn add node-appwrite
+    ```
+    ```bash pnpm
+    pnpm add node-appwrite
+    ```
+    </CodeGroup>
+  </Step>
+  <Step title="Initialize the client">
+    Create a `Client` instance and configure it with your Appwrite endpoint, project ID, and API key.
 
-## Need inspiration?
+    ```typescript
+    import { Client } from 'node-appwrite';
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+    const client = new Client()
+        .setEndpoint('https://cloud.appwrite.io/v1')
+        .setProject('<YOUR_PROJECT_ID>')
+        .setKey('<YOUR_API_KEY>');
+    ```
+  </Step>
+  <Step title="Make your first request">
+    Instantiate a service class and call any method. All methods return Promises.
+
+    ```typescript
+    import { Client, Users, ID } from 'node-appwrite';
+
+    const client = new Client()
+        .setEndpoint('https://cloud.appwrite.io/v1')
+        .setProject('<YOUR_PROJECT_ID>')
+        .setKey('<YOUR_API_KEY>');
+
+    const users = new Users(client);
+
+    const user = await users.create(
+        ID.unique(),
+        'user@example.com',
+        undefined,
+        'securepassword',
+        'Jane Doe'
+    );
+
+    console.log(user.$id);
+    ```
+  </Step>
+  <Step title="Handle errors">
+    Wrap calls in try/catch and inspect the `AppwriteException` for details.
+
+    ```typescript
+    import { AppwriteException } from 'node-appwrite';
+
+    try {
+        const user = await users.get('<USER_ID>');
+    } catch (error) {
+        if (error instanceof AppwriteException) {
+            console.error(error.message, error.code, error.type);
+        }
+    }
+    ```
+  </Step>
+</Steps>
+
+## What's included
+
+<CardGroup cols={2}>
+  <Card title="Databases" icon="database" href="/api/databases">
+    Create and manage databases, collections, documents, and indexes. Use the Query builder to filter and paginate results.
+  </Card>
+  <Card title="Storage" icon="folder" href="/api/storage">
+    Manage file buckets and upload files with built-in chunked upload support and progress callbacks.
+  </Card>
+  <Card title="Functions" icon="bolt" href="/api/functions">
+    Deploy and execute serverless functions. Manage deployments, variables, and executions.
+  </Card>
+  <Card title="Messaging" icon="envelope" href="/api/messaging">
+    Send push notifications, emails, and SMS messages. Manage providers, topics, and subscribers.
+  </Card>
+  <Card title="Users" icon="users" href="/api/users">
+    Create, update, and manage users. Control sessions, labels, and preferences.
+  </Card>
+  <Card title="Teams" icon="people-group" href="/api/teams">
+    Organize users into teams, manage memberships, and share access to resources.
+  </Card>
+</CardGroup>
+
+## Compatibility
+
+The SDK is compatible with **Appwrite server version 1.9.x**. It works in Node.js, Deno, and any WinterCG-compatible edge runtime.
+
+<Note>
+  For browser-based applications, use the [Appwrite Web SDK](https://github.com/appwrite/sdk-for-web) instead. This SDK is designed for server-side use only.
+</Note>

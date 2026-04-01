@@ -1,0 +1,342 @@
+---
+title: "Messaging"
+description: "Send emails, SMS, and push notifications to users and topics."
+---
+
+The `Messaging` service lets you compose and deliver messages to users across three channels: email, SMS, and push notifications. Messages can be sent immediately, saved as drafts, or scheduled for future delivery.
+
+<Note>
+  Messages can target individual users, specific targets (device tokens / phone numbers), or topics. Server SDK calls add recipients automatically; client SDK calls send invitations.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, Messaging } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const messaging = new Messaging(client);
+```
+
+## Methods
+
+### `listMessages`
+
+Get a paginated list of all messages in the current project.
+
+| Parameter | Type       | Required | Description                                                                 |
+|-----------|------------|----------|-----------------------------------------------------------------------------|
+| `queries` | `string[]` | No       | Query filters. Filterable: `scheduledAt`, `deliveredAt`, `status`, `providerType`. |
+| `search`  | `string`   | No       | Full-text search term. Max 256 chars.                                       |
+| `total`   | `boolean`  | No       | Set to `false` to skip total count calculation.                             |
+
+**Returns:** `Promise<Models.MessageList>`
+
+```typescript
+import { Query } from 'node-appwrite';
+
+const messages = await messaging.listMessages({
+    queries: [Query.equal('status', 'sent')],
+});
+console.log(messages.total, messages.messages);
+```
+
+---
+
+### `createEmail`
+
+Create and optionally send or schedule a new email message.
+
+| Parameter     | Type       | Required | Description                                                         |
+|---------------|------------|----------|---------------------------------------------------------------------|
+| `messageId`   | `string`   | Yes      | Unique message ID. Use `ID.unique()` to auto-generate.              |
+| `subject`     | `string`   | Yes      | Email subject line.                                                 |
+| `content`     | `string`   | Yes      | Email body content.                                                 |
+| `topics`      | `string[]` | No       | Target topic IDs.                                                   |
+| `users`       | `string[]` | No       | Target user IDs.                                                    |
+| `targets`     | `string[]` | No       | Target IDs (device tokens, email addresses, etc.).                  |
+| `cc`          | `string[]` | No       | Target IDs to CC.                                                   |
+| `bcc`         | `string[]` | No       | Target IDs to BCC.                                                  |
+| `attachments` | `string[]` | No       | File references formatted as `<BUCKET_ID>:<FILE_ID>`.               |
+| `draft`       | `boolean`  | No       | Save as draft without sending.                                      |
+| `html`        | `boolean`  | No       | Treat `content` as HTML.                                            |
+| `scheduledAt` | `string`   | No       | ISO 8601 datetime for scheduled delivery. Must be in the future.    |
+
+**Returns:** `Promise<Models.Message>`
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const message = await messaging.createEmail({
+    messageId: ID.unique(),
+    subject: 'Welcome to Appwrite!',
+    content: '<h1>Hello!</h1><p>Thanks for signing up.</p>',
+    users: ['<USER_ID>'],
+    html: true,
+});
+```
+
+<Tip>
+  Set `draft: true` to compose a message without sending it. You can update and send it later using `updateEmail`.
+</Tip>
+
+---
+
+### `updateEmail`
+
+Update a draft email message. Only messages in `draft` status can be updated.
+
+| Parameter     | Type       | Required | Description                                                      |
+|---------------|------------|----------|------------------------------------------------------------------|
+| `messageId`   | `string`   | Yes      | ID of the draft message to update.                               |
+| `topics`      | `string[]` | No       | Updated topic IDs.                                               |
+| `users`       | `string[]` | No       | Updated user IDs.                                                |
+| `targets`     | `string[]` | No       | Updated target IDs.                                              |
+| `subject`     | `string`   | No       | Updated subject line.                                            |
+| `content`     | `string`   | No       | Updated body content.                                            |
+| `draft`       | `boolean`  | No       | Set to `false` to send immediately.                              |
+| `html`        | `boolean`  | No       | Treat `content` as HTML.                                         |
+| `cc`          | `string[]` | No       | Updated CC target IDs.                                           |
+| `bcc`         | `string[]` | No       | Updated BCC target IDs.                                          |
+| `scheduledAt` | `string`   | No       | ISO 8601 scheduled delivery datetime.                            |
+| `attachments` | `string[]` | No       | Updated file attachments as `<BUCKET_ID>:<FILE_ID>`.             |
+
+**Returns:** `Promise<Models.Message>`
+
+```typescript
+const updated = await messaging.updateEmail({
+    messageId: '<MESSAGE_ID>',
+    draft: false, // send now
+    scheduledAt: undefined,
+});
+```
+
+---
+
+### `createPush`
+
+Create a new push notification message.
+
+| Parameter          | Type              | Required | Description                                                               |
+|--------------------|-------------------|----------|---------------------------------------------------------------------------|
+| `messageId`        | `string`          | Yes      | Unique message ID.                                                        |
+| `title`            | `string`          | No       | Notification title.                                                       |
+| `body`             | `string`          | No       | Notification body text.                                                   |
+| `topics`           | `string[]`        | No       | Target topic IDs.                                                         |
+| `users`            | `string[]`        | No       | Target user IDs.                                                          |
+| `targets`          | `string[]`        | No       | Target IDs (device push tokens).                                          |
+| `data`             | `object`          | No       | Additional key-value data payload.                                        |
+| `action`           | `string`          | No       | Action URL or identifier on tap.                                          |
+| `image`            | `string`          | No       | Image as `<BUCKET_ID>:<FILE_ID>` (JPEG, PNG, or BMP).                    |
+| `icon`             | `string`          | No       | Icon (Android and Web only).                                              |
+| `sound`            | `string`          | No       | Sound file name (Android and iOS only).                                   |
+| `color`            | `string`          | No       | Background color (Android only).                                          |
+| `tag`              | `string`          | No       | Notification tag (Android only).                                          |
+| `badge`            | `number`          | No       | Badge count (iOS only).                                                   |
+| `draft`            | `boolean`         | No       | Save as draft.                                                            |
+| `scheduledAt`      | `string`          | No       | ISO 8601 scheduled delivery datetime.                                     |
+| `contentAvailable` | `boolean`         | No       | Background delivery (iOS only).                                           |
+| `critical`         | `boolean`         | No       | Critical alert — requires entitlement (iOS only).                         |
+| `priority`         | `MessagePriority` | No       | `normal` or `high`. High attempts immediate delivery.                     |
+
+**Returns:** `Promise<Models.Message>`
+
+```typescript
+import { ID, MessagePriority } from 'node-appwrite';
+
+const push = await messaging.createPush({
+    messageId: ID.unique(),
+    title: 'Order shipped',
+    body: 'Your order #1234 is on its way.',
+    users: ['<USER_ID>'],
+    priority: MessagePriority.High,
+});
+```
+
+---
+
+### `updatePush`
+
+Update a draft push notification. Only `draft` messages can be updated.
+
+| Parameter          | Type              | Required | Description                                           |
+|--------------------|-------------------|----------|-------------------------------------------------------|
+| `messageId`        | `string`          | Yes      | ID of the draft push notification.                    |
+| `title`            | `string`          | No       | Updated title.                                        |
+| `body`             | `string`          | No       | Updated body.                                         |
+| `topics`           | `string[]`        | No       | Updated topic IDs.                                    |
+| `users`            | `string[]`        | No       | Updated user IDs.                                     |
+| `targets`          | `string[]`        | No       | Updated target IDs.                                   |
+| `data`             | `object`          | No       | Updated data payload.                                 |
+| `draft`            | `boolean`         | No       | Set to `false` to send immediately.                   |
+| `scheduledAt`      | `string`          | No       | ISO 8601 scheduled delivery datetime.                 |
+| `priority`         | `MessagePriority` | No       | `normal` or `high`.                                   |
+
+**Returns:** `Promise<Models.Message>`
+
+```typescript
+const updated = await messaging.updatePush({
+    messageId: '<MESSAGE_ID>',
+    draft: false,
+});
+```
+
+---
+
+### `createSMS`
+
+Create a new SMS message.
+
+| Parameter     | Type       | Required | Description                                                    |
+|---------------|------------|----------|----------------------------------------------------------------|
+| `messageId`   | `string`   | Yes      | Unique message ID.                                             |
+| `content`     | `string`   | Yes      | SMS body text.                                                 |
+| `topics`      | `string[]` | No       | Target topic IDs.                                              |
+| `users`       | `string[]` | No       | Target user IDs.                                               |
+| `targets`     | `string[]` | No       | Target IDs (phone number targets).                             |
+| `draft`       | `boolean`  | No       | Save as draft.                                                 |
+| `scheduledAt` | `string`   | No       | ISO 8601 scheduled delivery datetime.                          |
+
+**Returns:** `Promise<Models.Message>`
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const sms = await messaging.createSMS({
+    messageId: ID.unique(),
+    content: 'Your verification code is 123456.',
+    users: ['<USER_ID>'],
+});
+```
+
+---
+
+### `updateSMS`
+
+Update a draft SMS message. Only `draft` messages can be updated.
+
+| Parameter     | Type       | Required | Description                               |
+|---------------|------------|----------|-------------------------------------------|
+| `messageId`   | `string`   | Yes      | ID of the draft SMS to update.            |
+| `topics`      | `string[]` | No       | Updated topic IDs.                        |
+| `users`       | `string[]` | No       | Updated user IDs.                         |
+| `targets`     | `string[]` | No       | Updated target IDs.                       |
+| `content`     | `string`   | No       | Updated SMS body text.                    |
+| `draft`       | `boolean`  | No       | Set to `false` to send immediately.       |
+| `scheduledAt` | `string`   | No       | ISO 8601 scheduled delivery datetime.     |
+
+**Returns:** `Promise<Models.Message>`
+
+```typescript
+const updated = await messaging.updateSMS({
+    messageId: '<MESSAGE_ID>',
+    content: 'Updated: your code is 654321.',
+    draft: false,
+});
+```
+
+---
+
+### `getMessage`
+
+Retrieve a single message by its ID.
+
+| Parameter   | Type     | Required | Description   |
+|-------------|----------|----------|---------------|
+| `messageId` | `string` | Yes      | Message ID.   |
+
+**Returns:** `Promise<Models.Message>`
+
+```typescript
+const message = await messaging.getMessage({ messageId: '<MESSAGE_ID>' });
+console.log(message.status);
+```
+
+---
+
+### `delete`
+
+Delete a message record. Sending a message that has already been delivered does **not** recall it.
+
+| Parameter   | Type     | Required | Description   |
+|-------------|----------|----------|---------------|
+| `messageId` | `string` | Yes      | Message ID.   |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await messaging.delete({ messageId: '<MESSAGE_ID>' });
+```
+
+---
+
+### `listMessageLogs`
+
+Get activity logs for a message.
+
+| Parameter   | Type       | Required | Description                                              |
+|-------------|------------|----------|----------------------------------------------------------|
+| `messageId` | `string`   | Yes      | Message ID.                                              |
+| `queries`   | `string[]` | No       | Supports `limit` and `offset` query methods only.        |
+| `total`     | `boolean`  | No       | Set to `false` to skip total count.                      |
+
+**Returns:** `Promise<Models.LogList>`
+
+```typescript
+const logs = await messaging.listMessageLogs({ messageId: '<MESSAGE_ID>' });
+```
+
+---
+
+### `listTargets`
+
+List the delivery targets associated with a specific message.
+
+| Parameter   | Type       | Required | Description                                                       |
+|-------------|------------|----------|-------------------------------------------------------------------|
+| `messageId` | `string`   | Yes      | Message ID.                                                       |
+| `queries`   | `string[]` | No       | Filter by `userId`, `providerId`, `identifier`, `providerType`.   |
+| `total`     | `boolean`  | No       | Set to `false` to skip total count.                               |
+
+**Returns:** `Promise<Models.TargetList>`
+
+```typescript
+const targets = await messaging.listTargets({ messageId: '<MESSAGE_ID>' });
+```
+
+---
+
+## Additional methods
+
+The following methods are available but not detailed above. Refer to the JSDoc in the source for full parameter lists.
+
+| Method                    | Description                                            |
+|---------------------------|--------------------------------------------------------|
+| `listProviders`           | List all configured messaging providers.               |
+| `createApnsProvider`      | Create an APNs (Apple Push) provider.                  |
+| `createFcmProvider`       | Create a Firebase Cloud Messaging provider.            |
+| `createMailgunProvider`   | Create a Mailgun email provider.                       |
+| `createSendgridProvider`  | Create a SendGrid email provider.                      |
+| `createSmtpProvider`      | Create a custom SMTP email provider.                   |
+| `createTwilioProvider`    | Create a Twilio SMS provider.                          |
+| `createVonageProvider`    | Create a Vonage SMS provider.                          |
+| `getProvider`             | Get a provider by ID.                                  |
+| `updateProvider`          | Update an existing provider configuration.             |
+| `deleteProvider`          | Delete a provider.                                     |
+| `listTopics`              | List all messaging topics.                             |
+| `createTopic`             | Create a new topic.                                    |
+| `getTopic`                | Get a topic by ID.                                     |
+| `updateTopic`             | Update a topic.                                        |
+| `deleteTopic`             | Delete a topic.                                        |
+| `listSubscribers`         | List subscribers of a topic.                           |
+| `createSubscriber`        | Subscribe a target to a topic.                         |
+| `getSubscriber`           | Get a topic subscriber by ID.                          |
+| `deleteSubscriber`        | Remove a subscriber from a topic.                      |
+
+<Warning>
+  `createSms` and `updateSms` (lowercase) are deprecated since SDK 1.8.0. Use `createSMS` and `updateSMS` instead.
+</Warning>

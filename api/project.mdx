@@ -1,0 +1,110 @@
+---
+title: "Project"
+description: "Manage project-level environment variables."
+---
+
+The `Project` service provides CRUD operations for project-level environment variables — variables that are shared across all functions and services in a project.
+
+## Initialization
+
+```typescript
+import { Client, Project } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const project = new Project(client);
+```
+
+## Methods
+
+### `listVariables(queries?, total?)`
+
+Get all project-level environment variables.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `queries` | `string[]` | No | Filter on `key`, `resourceType`, `resourceId`, `secret`. |
+| `total` | `boolean` | No | Include total count. |
+
+**Returns:** `Promise<Models.VariableList>`
+
+```typescript
+const vars = await project.listVariables();
+vars.variables.forEach(v => console.log(v.key, v.value));
+```
+
+### `createVariable(key, value, secret?)`
+
+Create a new project-level variable.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `key` | `string` | Yes | Variable name (max 255 chars). |
+| `value` | `string` | Yes | Variable value (max 8192 chars). |
+| `secret` | `boolean` | No | Mark as secret (value hidden after creation). |
+
+**Returns:** `Promise<Models.Variable>`
+
+```typescript
+const variable = await project.createVariable({
+    key: 'DATABASE_URL',
+    value: 'postgres://...',
+    secret: true
+});
+```
+
+### `getVariable(variableId)`
+
+Get a variable by ID.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `variableId` | `string` | Yes | Variable ID. |
+
+**Returns:** `Promise<Models.Variable>`
+
+```typescript
+const variable = await project.getVariable({ variableId: 'var_id' });
+```
+
+### `updateVariable(variableId, key, value?, secret?)`
+
+Update an existing project variable.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `variableId` | `string` | Yes | Variable ID. |
+| `key` | `string` | Yes | New variable name. |
+| `value` | `string` | No | New value. |
+| `secret` | `boolean` | No | Mark as secret. |
+
+**Returns:** `Promise<Models.Variable>`
+
+```typescript
+await project.updateVariable({
+    variableId: 'var_id',
+    key: 'DATABASE_URL',
+    value: 'postgres://new-host/...'
+});
+```
+
+### `deleteVariable(variableId)`
+
+Delete a project variable.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `variableId` | `string` | Yes | Variable ID. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await project.deleteVariable({ variableId: 'var_id' });
+```
+
+<Tip>
+Project variables are accessible to all functions in the project. For function-specific variables, use `functions.createVariable()` instead.
+</Tip>

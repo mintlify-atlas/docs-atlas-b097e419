@@ -1,0 +1,319 @@
+---
+title: "Account"
+description: "Manage the current user's account, sessions, preferences, and identity."
+---
+
+The `Account` service lets you register users, manage sessions, and read or update the authenticated user's profile data. These methods operate on the currently logged-in user, identified via session cookies or JWTs.
+
+<Note>
+  The Account service is intended for **client-side** use. For server-side user management (admin operations), see the [Users](/api/users) service.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, Account } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const account = new Account(client);
+```
+
+## Methods
+
+### `get`
+
+Get the currently logged-in user.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const user = await account.get();
+console.log(user.name, user.email);
+```
+
+---
+
+### `create`
+
+Register a new user account. After registration, use `createEmailPasswordSession` to log the user in.
+
+| Parameter  | Type     | Required | Description                                              |
+|------------|----------|----------|----------------------------------------------------------|
+| `userId`   | `string` | Yes      | Unique user ID. Use `ID.unique()` to auto-generate.      |
+| `email`    | `string` | Yes      | User email address.                                      |
+| `password` | `string` | Yes      | Password (8–256 characters).                             |
+| `name`     | `string` | No       | Display name (max 128 chars).                            |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const user = await account.create({
+    userId: ID.unique(),
+    email: 'jane@example.com',
+    password: 'supersecret',
+    name: 'Jane Doe',
+});
+```
+
+---
+
+### `createEmailPasswordSession`
+
+Log in a user with their email and password, creating a new session.
+
+| Parameter  | Type     | Required | Description         |
+|------------|----------|----------|---------------------|
+| `email`    | `string` | Yes      | User email address. |
+| `password` | `string` | Yes      | User password.      |
+
+**Returns:** `Promise<Models.Session>`
+
+```typescript
+const session = await account.createEmailPasswordSession({
+    email: 'jane@example.com',
+    password: 'supersecret',
+});
+```
+
+---
+
+### `createJWT`
+
+Create a short-lived JSON Web Token (valid up to 15 minutes by default, max 3600 seconds) that can be used to authenticate server-side requests on behalf of the current user.
+
+| Parameter  | Type     | Required | Description                                               |
+|------------|----------|----------|-----------------------------------------------------------|
+| `duration` | `number` | No       | Expiry in seconds (default: 900, max: 3600).              |
+
+**Returns:** `Promise<Models.Jwt>`
+
+<Tip>
+  Pass the resulting JWT via `client.setJWT('<token>')` on your server-side client to act as that user without sharing their password.
+</Tip>
+
+```typescript
+const jwt = await account.createJWT({ duration: 900 });
+// use jwt.jwt on the server
+```
+
+---
+
+### `updateEmail`
+
+Update the current user's email address. Resets email verification. The user must supply their current password for security.
+
+| Parameter  | Type     | Required | Description           |
+|------------|----------|----------|-----------------------|
+| `email`    | `string` | Yes      | New email address.    |
+| `password` | `string` | Yes      | Current password.     |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await account.updateEmail({
+    email: 'newemail@example.com',
+    password: 'supersecret',
+});
+```
+
+---
+
+### `updateName`
+
+Update the display name of the currently logged-in user.
+
+| Parameter | Type     | Required | Description              |
+|-----------|----------|----------|--------------------------|
+| `name`    | `string` | Yes      | New name (max 128 chars).|
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await account.updateName({ name: 'Jane Smith' });
+```
+
+---
+
+### `updatePassword`
+
+Update the current user's password. Provide the old password when changing from an existing password.
+
+| Parameter     | Type     | Required | Description                         |
+|---------------|----------|----------|-------------------------------------|
+| `password`    | `string` | Yes      | New password (min 8 chars).         |
+| `oldPassword` | `string` | No       | Current password (required if set). |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await account.updatePassword({
+    password: 'newpassword123',
+    oldPassword: 'supersecret',
+});
+```
+
+---
+
+### `updatePhone`
+
+Update the current user's phone number. Requires the current password.
+
+| Parameter  | Type     | Required | Description                                       |
+|------------|----------|----------|---------------------------------------------------|
+| `phone`    | `string` | Yes      | New phone number with country code (e.g. `+1…`). |
+| `password` | `string` | Yes      | Current password.                                 |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await account.updatePhone({
+    phone: '+16175551212',
+    password: 'supersecret',
+});
+```
+
+---
+
+### `getPrefs`
+
+Get the preferences object for the currently logged-in user.
+
+**Parameters:** None
+
+**Returns:** `Promise<Preferences>`
+
+```typescript
+const prefs = await account.getPrefs<{ theme: string }>();
+console.log(prefs.theme);
+```
+
+---
+
+### `updatePrefs`
+
+Update the preferences for the currently logged-in user. The object is merged on top of existing preferences.
+
+| Parameter | Type                    | Required | Description              |
+|-----------|-------------------------|----------|--------------------------|
+| `prefs`   | `Partial<Preferences>`  | Yes      | Preferences object.      |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await account.updatePrefs({
+    prefs: { theme: 'dark', language: 'en' },
+});
+```
+
+---
+
+### `listSessions`
+
+Get all active sessions for the current user.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.SessionList>`
+
+```typescript
+const sessions = await account.listSessions();
+console.log(sessions.sessions);
+```
+
+---
+
+### `deleteSession`
+
+Delete a specific session by ID. Pass `'current'` to log out from the current device.
+
+| Parameter   | Type     | Required | Description                                     |
+|-------------|----------|----------|-------------------------------------------------|
+| `sessionId` | `string` | Yes      | Session ID to delete, or `'current'`.           |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await account.deleteSession({ sessionId: 'current' });
+```
+
+---
+
+### `listLogs`
+
+Get the latest security activity logs for the current user (IP, location, timestamp).
+
+| Parameter | Type       | Required | Description                                         |
+|-----------|------------|----------|-----------------------------------------------------|
+| `queries` | `string[]` | No       | Query strings (only `limit` and `offset` supported).|
+| `total`   | `boolean`  | No       | Include total count in response.                    |
+
+**Returns:** `Promise<Models.LogList>`
+
+```typescript
+const logs = await account.listLogs();
+```
+
+---
+
+### `listIdentities`
+
+Get OAuth2 and other linked identities for the currently logged-in user.
+
+| Parameter | Type       | Required | Description                  |
+|-----------|------------|----------|------------------------------|
+| `queries` | `string[]` | No       | Filter/paginate results.     |
+| `total`   | `boolean`  | No       | Include total count.         |
+
+**Returns:** `Promise<Models.IdentityList>`
+
+```typescript
+const identities = await account.listIdentities();
+```
+
+---
+
+### `deleteIdentity`
+
+Remove a linked identity by its ID.
+
+| Parameter    | Type     | Required | Description  |
+|--------------|----------|----------|--------------|
+| `identityId` | `string` | Yes      | Identity ID. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await account.deleteIdentity({ identityId: '<IDENTITY_ID>' });
+```
+
+---
+
+## Additional methods
+
+| Method                      | Description                                                   |
+|-----------------------------|---------------------------------------------------------------|
+| `deleteSessions()`          | Delete all sessions (log out from all devices).               |
+| `createAnonymousSession()`  | Create a guest session without credentials.                   |
+| `createMagicURLToken()`     | Send a magic link email for passwordless login.               |
+| `createPhoneToken()`        | Send an OTP SMS for phone-based login.                        |
+| `updatePhoneSession()`      | Confirm a phone OTP and upgrade an anonymous session.         |
+| `createVerification()`      | Send an email verification message.                           |
+| `updateVerification()`      | Confirm an email verification token.                          |
+| `createPhoneVerification()` | Send a phone verification SMS.                                |
+| `updatePhoneVerification()` | Confirm a phone verification token.                           |
+| `createRecovery()`          | Initiate a password recovery email.                           |
+| `updateRecovery()`          | Complete password recovery with a token.                      |
+| `createOAuth2Token()`       | Initiate OAuth2 authentication.                               |
+| `updateMagicURLSession()`   | Upgrade a magic-link token to a full session.                 |
+
+<Note>
+  For details on error codes thrown by any method, see [Error Handling](/concepts/error-handling).
+</Note>

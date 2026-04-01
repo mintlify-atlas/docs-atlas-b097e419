@@ -1,0 +1,102 @@
+---
+title: "Locale"
+description: "Retrieve locale information, country codes, currencies, languages, phone codes, and timezones."
+---
+
+The `Locale` service returns geo and locale data based on IP address or locale headers — useful for internationalisation, currency display, and country pickers.
+
+## Initialization
+
+```typescript
+import { Client, Locale } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const locale = new Locale(client);
+```
+
+## Methods
+
+### `get()`
+
+Get the current user's location based on their IP address. Returns country code, continent, IP, and suggested currency.
+
+**Returns:** `Promise<Models.Locale>`
+
+```typescript
+const localeData = await locale.get();
+console.log(localeData.country, localeData.currency);
+```
+
+### `listCodes()`
+
+List all locale codes in [ISO 639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
+
+**Returns:** `Promise<Models.LocaleCodeList>`
+
+```typescript
+const codes = await locale.listCodes();
+```
+
+### `listContinents()`
+
+List all continents.
+
+**Returns:** `Promise<Models.ContinentList>`
+
+```typescript
+const continents = await locale.listContinents();
+```
+
+### `listCountries()`
+
+List all countries.
+
+**Returns:** `Promise<Models.CountryList>`
+
+```typescript
+const countries = await locale.listCountries();
+```
+
+### `listCountriesEU()`
+
+List EU member countries.
+
+**Returns:** `Promise<Models.CountryList>`
+
+```typescript
+const euCountries = await locale.listCountriesEU();
+```
+
+### `listCountriesPhones()`
+
+List countries with their dialing phone codes.
+
+**Returns:** `Promise<Models.PhoneList>`
+
+```typescript
+const phones = await locale.listCountriesPhones();
+```
+
+### `listCurrencies()`
+
+List all currencies with ISO 4217 codes.
+
+**Returns:** `Promise<Models.CurrencyList>`
+
+```typescript
+const currencies = await locale.listCurrencies();
+```
+
+### `listLanguages()`
+
+List all languages with ISO 639-1 codes.
+
+**Returns:** `Promise<Models.LanguageList>`
+
+```typescript
+const languages = await locale.listLanguages();
+```

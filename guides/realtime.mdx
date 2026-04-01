@@ -1,0 +1,183 @@
+---
+title: "Events & Webhooks"
+description: "Use Appwrite Webhooks to receive server-side event notifications."
+---
+
+<Note>
+Realtime subscriptions (WebSocket-based live updates) are a **client-side** feature available in the Appwrite Web, Flutter, and mobile SDKs. The Node.js server SDK does not support realtime subscriptions. Use webhooks or Functions triggers for server-side event handling instead.
+</Note>
+
+Webhooks let your server receive an HTTP `POST` request from Appwrite whenever a specified event occurs — a new user registers, a document is created, a file is uploaded, and so on. You configure a URL that Appwrite calls with a JSON payload describing the event.
+
+## The `Webhooks` service
+
+The `Webhooks` class provides full CRUD management for project webhooks.
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `webhooks.list()` | List all webhooks in the project |
+| `webhooks.create()` | Register a new webhook endpoint |
+| `webhooks.get(webhookId)` | Get a webhook by ID |
+| `webhooks.update(webhookId, ...)` | Update a webhook's URL, events, or settings |
+| `webhooks.delete(webhookId)` | Remove a webhook |
+| `webhooks.updateSignature(webhookId)` | Regenerate the signing key |
+
+### Initialize the client
+
+```typescript
+import { Client, Webhooks } from 'node-appwrite';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('<PROJECT_ID>')
+  .setKey('<API_KEY>'); // requires webhooks.write scope
+
+const webhooks = new Webhooks(client);
+```
+
+## Create a webhook
+
+```typescript
+const webhook = await webhooks.create({
+  webhookId: 'unique()',
+  name: 'User registration handler',
+  url: 'https://example.com/webhooks/appwrite',
+  events: [
+    'users.*.create',
+    'databases.*.collections.*.documents.*.create',
+  ],
+  enabled: true,
+  security: true, // verify TLS certificate of the endpoint
+});
+
+console.log('Webhook ID:', webhook.$id);
+console.log('Signing key:', webhook.signatureKey);
+```
+
+**`create` parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `webhookId` | `string` | Yes | Unique ID or `'unique()'` |
+| `url` | `string` | Yes | HTTPS endpoint to receive events |
+| `name` | `string` | Yes | Human-readable label (max 128 chars) |
+| `events` | `string[]` | Yes | Up to 100 event patterns |
+| `enabled` | `boolean` | No | Enable/disable delivery (default `true`) |
+| `security` | `boolean` | No | Verify the endpoint's TLS certificate |
+| `httpUser` | `string` | No | HTTP Basic auth username |
+| `httpPass` | `string` | No | HTTP Basic auth password |
+
+## List webhooks
+
+```typescript
+const list = await webhooks.list();
+
+console.log(`${list.total} webhook(s) configured`);
+
+for (const wh of list.webhooks) {
+  console.log(wh.$id, wh.name, wh.url, wh.enabled ? 'active' : 'disabled');
+}
+```
+
+## Get a webhook
+
+```typescript
+const webhook = await webhooks.get({ webhookId: '<WEBHOOK_ID>' });
+
+console.log('Events:', webhook.events);
+console.log('Attempts:', webhook.attempts);
+console.log('Logs:', webhook.logs);
+```
+
+## Update a webhook
+
+```typescript
+const updated = await webhooks.update({
+  webhookId: '<WEBHOOK_ID>',
+  name: 'Updated handler',
+  url: 'https://example.com/webhooks/v2',
+  events: ['users.*.create', 'users.*.delete'],
+  enabled: true,
+  security: true,
+});
+```
+
+## Delete a webhook
+
+```typescript
+await webhooks.delete({ webhookId: '<WEBHOOK_ID>' });
+```
+
+## Regenerate the signing key
+
+Appwrite signs each webhook delivery with an HMAC-SHA1 signature included in the `X-Appwrite-Webhook-Signature` header. Rotate the key when it may have been compromised:
+
+```typescript
+const webhook = await webhooks.updateSignature({ webhookId: '<WEBHOOK_ID>' });
+
+console.log('New signing key:', webhook.signatureKey);
+```
+
+<Warning>
+Rotating the signing key immediately invalidates the old one. Update your endpoint's verification logic before rotating to avoid dropped deliveries.
+</Warning>
+
+### Verifying a webhook delivery
+
+In your endpoint handler, verify the signature before processing the payload:
+
+```typescript
+import { createHmac } from 'node:crypto';
+
+function verifyWebhook(
+  payload: string,
+  signature: string,
+  key: string
+): boolean {
+  const expected = createHmac('sha1', key)
+    .update(payload)
+    .digest('base64');
+  return signature === expected;
+}
+
+// Express example
+app.post('/webhooks/appwrite', (req, res) => {
+  const signature = req.headers['x-appwrite-webhook-signature'] as string;
+  const isValid = verifyWebhook(
+    JSON.stringify(req.body),
+    signature,
+    process.env.APPWRITE_WEBHOOK_KEY!
+  );
+
+  if (!isValid) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  const event = req.body;
+  console.log('Event:', event.event, event.payload);
+  res.sendStatus(200);
+});
+```
+
+## Functions triggers as an alternative
+
+Instead of maintaining an external HTTP endpoint, you can trigger an Appwrite Function directly on events. In the Appwrite Console, open your function's **Settings → Events** and add event patterns. The function receives the event payload as its execution context with no public URL required.
+
+<Tip>
+For event-driven server workflows with low latency, Functions triggers are often simpler to operate than external webhook endpoints because they run inside the Appwrite infrastructure and do not require a publicly reachable server.
+</Tip>
+
+## Realtime (client-side)
+
+If you need live updates pushed to a browser or mobile app, use the Appwrite Web SDK's `client.subscribe()` method instead. That SDK connects to Appwrite's WebSocket server and delivers events in real time to the client.
+
+<CardGroup cols={2}>
+  <Card title="Functions API" icon="bolt" href="/api/functions">
+    Trigger functions on Appwrite events without a public endpoint.
+  </Card>
+  <Card title="Health API" icon="heart-pulse" href="/api/health">
+    Monitor queue depths and service health, including webhook delivery queues.
+  </Card>
+</CardGroup>

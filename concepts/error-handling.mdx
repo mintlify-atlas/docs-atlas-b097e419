@@ -1,0 +1,170 @@
+---
+title: "Error handling"
+description: "Handle errors from the Appwrite SDK using AppwriteException."
+---
+
+Every error thrown by the Appwrite Node.js SDK is an instance of `AppwriteException`. Wrapping SDK calls in a `try/catch` block and checking for `AppwriteException` gives you structured access to the HTTP status code, Appwrite error type, and raw response body.
+
+```typescript
+import { AppwriteException } from 'node-appwrite';
+```
+
+---
+
+## AppwriteException properties
+
+`AppwriteException` extends the built-in `Error` class. In addition to the standard `message` and `stack` properties, it exposes:
+
+| Property | Type | Description |
+|---|---|---|
+| `name` | `string` | Always `'AppwriteException'`. |
+| `message` | `string` | Human-readable error description. |
+| `code` | `number` | HTTP status code (e.g. `404`, `401`). |
+| `type` | `string` | Appwrite error type identifier (e.g. `'document_not_found'`). |
+| `response` | `string` | Raw response body as a JSON string. |
+
+---
+
+## Catching errors
+
+```typescript
+import { Client, Databases, AppwriteException, Query } from 'node-appwrite';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('my-project-id')
+  .setKey('my-api-key');
+
+const databases = new Databases(client);
+
+try {
+  const document = await databases.getDocument(
+    'my-database-id',
+    'my-collection-id',
+    'non-existent-doc-id'
+  );
+} catch (error) {
+  if (error instanceof AppwriteException) {
+    console.error('Appwrite error:');
+    console.error('  message:', error.message);
+    console.error('  code:', error.code);       // e.g. 404
+    console.error('  type:', error.type);       // e.g. 'document_not_found'
+    console.error('  response:', error.response); // raw JSON string
+  } else {
+    // Network error, timeout, or other unexpected error
+    throw error;
+  }
+}
+```
+
+---
+
+## Common error codes
+
+### 400 Bad request
+
+The request payload is invalid or missing required fields. Check that all required parameters are present and have the correct types.
+
+### 401 Unauthorized
+
+The request is missing valid authentication credentials. Verify that you have called `setKey`, `setJWT`, or `setSession` with the correct values.
+
+### 403 Forbidden
+
+The authenticated user or API key does not have permission to perform the requested action. Review the permissions on the resource and the scopes granted to the API key.
+
+### 404 Not found
+
+The requested resource does not exist. Check that the IDs passed to the method are correct.
+
+### 409 Conflict
+
+A resource with the same unique identifier already exists. Use `ID.unique()` to generate a new ID, or handle the conflict by checking for the existing resource first.
+
+### 429 Too many requests
+
+The request has been rate-limited. Implement exponential backoff and retry logic.
+
+### 500 Internal server error
+
+An unexpected error occurred on the Appwrite server. If the problem persists, check the Appwrite status page or your server logs.
+
+---
+
+## Differentiating error types
+
+Use `error.code` for broad HTTP-level handling and `error.type` for precise Appwrite-specific handling.
+
+```typescript
+try {
+  await databases.createDocument(databaseId, collectionId, documentId, data);
+} catch (error) {
+  if (error instanceof AppwriteException) {
+    switch (error.code) {
+      case 409:
+        // Document already exists — fetch it instead
+        return await databases.getDocument(databaseId, collectionId, documentId);
+
+      case 401:
+        // Re-authenticate and retry
+        throw new Error('Authentication required');
+
+      case 429:
+        // Back off and retry
+        await sleep(1000);
+        break;
+
+      default:
+        // Log type for debugging, re-throw for the caller
+        console.error(`Appwrite error type: ${error.type}`);
+        throw error;
+    }
+  }
+
+  throw error;
+}
+```
+
+---
+
+## Checking error identity
+
+Because `AppwriteException` extends `Error`, you can also check the `name` property when `instanceof` is unavailable (e.g. across module boundaries):
+
+```typescript
+if (error.name === 'AppwriteException') {
+  // safe to access error.code, error.type, error.response
+}
+```
+
+---
+
+## Best practices
+
+<Tip>
+Always narrow the catch clause with `instanceof AppwriteException` before accessing SDK-specific properties. Re-throw errors you don't handle so they are not silently swallowed.
+</Tip>
+
+- **Always catch `AppwriteException`** — do not rely on generic `Error` handling for SDK calls.
+- **Log `error.type`** — the type string identifies the exact error condition and is stable across SDK versions. It is more reliable than parsing `error.message`.
+- **Check `error.code` for HTTP semantics** — 4xx errors indicate a problem with your request; 5xx errors indicate a server-side problem.
+- **Do not expose `error.response`** to end users — it may contain internal details. Log it server-side for debugging.
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Client" icon="code" href="/concepts/client">
+    Configure the SDK client.
+  </Card>
+  <Card title="Queries" icon="filter" href="/concepts/queries">
+    Filter and sort results.
+  </Card>
+  <Card title="Permissions" icon="lock" href="/concepts/permissions">
+    Control access to resources.
+  </Card>
+  <Card title="TypeScript guide" icon="file-code" href="/guides/typescript">
+    TypeScript usage patterns.
+  </Card>
+</CardGroup>

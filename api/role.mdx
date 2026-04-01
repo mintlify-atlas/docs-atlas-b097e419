@@ -1,0 +1,126 @@
+---
+title: "Role"
+description: "Generate role strings for use with the Permission helper."
+---
+
+The `Role` class provides static methods that return role strings. These are passed to `Permission` methods to specify who should have a given permission.
+
+```typescript
+import { Permission, Role } from 'node-appwrite';
+
+Permission.read(Role.any())         // anyone can read
+Permission.write(Role.users())      // authenticated users can write
+Permission.delete(Role.user('id'))  // only this user can delete
+```
+
+## Methods
+
+### `Role.any()`
+
+Grants access to anyone — both authenticated and unauthenticated users.
+
+**Returns:** `'any'`
+
+```typescript
+Permission.read(Role.any())  // publicly readable
+```
+
+### `Role.users(status?)`
+
+Grants access to any authenticated user. Pass `'verified'` or `'unverified'` to target specific user states.
+
+**Returns:** `'users'` | `'users/verified'` | `'users/unverified'`
+
+```typescript
+Permission.read(Role.users())             // all authenticated users
+Permission.create(Role.users('verified')) // only email-verified users
+```
+
+### `Role.guests()`
+
+Grants access to unauthenticated (guest) users only. Authenticated users do not match this role.
+
+**Returns:** `'guests'`
+
+```typescript
+Permission.read(Role.guests())
+```
+
+### `Role.user(id, status?)`
+
+Grants access to a specific user by their user ID. Optionally filter by verification status.
+
+**Returns:** `'user:<id>'` | `'user:<id>/verified'`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | The user's ID |
+| `status` | `string` | Optional: `'verified'` or `'unverified'` |
+
+```typescript
+Permission.read(Role.user('user_abc123'))
+Permission.update(Role.user('user_abc123', 'verified'))
+```
+
+### `Role.team(id, role?)`
+
+Grants access to all members of a team. Optionally restrict to members with a specific team role.
+
+**Returns:** `'team:<id>'` | `'team:<id>/<role>'`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | The team's ID |
+| `role` | `string` | Optional: a specific role within the team (e.g. `'owner'`, `'editor'`) |
+
+```typescript
+Permission.read(Role.team('team_xyz'))          // all team members
+Permission.delete(Role.team('team_xyz', 'owner')) // only team owners
+```
+
+### `Role.member(id)`
+
+Grants access to a specific team membership by membership ID. Access is revoked when the member is removed from the team.
+
+**Returns:** `'member:<id>'`
+
+```typescript
+Permission.read(Role.member('membership_id'))
+```
+
+### `Role.label(name)`
+
+Grants access to all users that have been assigned the specified label.
+
+**Returns:** `'label:<name>'`
+
+```typescript
+Permission.read(Role.label('premium'))
+Permission.create(Role.label('editor'))
+```
+
+## Common patterns
+
+```typescript
+import { Permission, Role } from 'node-appwrite';
+
+// Public content (anyone can read, only admins can write)
+const publicDoc = [
+    Permission.read(Role.any()),
+    Permission.write(Role.label('admin')),
+];
+
+// Private user content (only the owner can access)
+const privateDoc = [
+    Permission.read(Role.user('owner_id')),
+    Permission.update(Role.user('owner_id')),
+    Permission.delete(Role.user('owner_id')),
+];
+
+// Team-shared content (team can read, owners can manage)
+const teamDoc = [
+    Permission.read(Role.team('team_id')),
+    Permission.update(Role.team('team_id', 'owner')),
+    Permission.delete(Role.team('team_id', 'owner')),
+];
+```

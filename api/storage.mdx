@@ -1,0 +1,323 @@
+---
+title: "Storage"
+description: "Manage storage buckets and files, including chunked uploads and image transformations."
+---
+
+The `Storage` service lets you create buckets, upload files, and retrieve or transform file content. The SDK handles chunked uploads automatically for files larger than 5 MB.
+
+<Note>
+  Files over **5 MB** are split into 5 MB chunks and uploaded sequentially. The SDK manages this transparently via `createFile`. An optional `onProgress` callback reports upload progress.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, Storage } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const storage = new Storage(client);
+```
+
+## Methods
+
+### `listBuckets`
+
+Get a paginated list of all storage buckets in the project.
+
+| Parameter | Type       | Required | Description                                    |
+|-----------|------------|----------|------------------------------------------------|
+| `queries` | `string[]` | No       | Filter/paginate with `Query` helpers.          |
+| `search`  | `string`   | No       | Search term (max 256 chars).                   |
+| `total`   | `boolean`  | No       | Include total count in response.               |
+
+**Returns:** `Promise<Models.BucketList>`
+
+```typescript
+const buckets = await storage.listBuckets();
+console.log(buckets.buckets);
+```
+
+---
+
+### `createBucket`
+
+Create a new storage bucket with optional file-size limits, allowed extensions, compression, encryption, and antivirus scanning.
+
+| Parameter               | Type          | Required | Description                                                      |
+|-------------------------|---------------|----------|------------------------------------------------------------------|
+| `bucketId`              | `string`      | Yes      | Unique bucket ID. Use `ID.unique()` to auto-generate.            |
+| `name`                  | `string`      | Yes      | Bucket display name.                                             |
+| `permissions`           | `string[]`    | No       | Bucket-level permissions.                                        |
+| `fileSecurity`          | `boolean`     | No       | Enable per-file permissions.                                     |
+| `enabled`               | `boolean`     | No       | Whether the bucket is accessible.                                |
+| `maximumFileSize`       | `number`      | No       | Max file size in bytes (up to 5 GB).                             |
+| `allowedFileExtensions` | `string[]`    | No       | Allowed file extensions (max 100, each 64 chars).                |
+| `compression`           | `Compression` | No       | Compression algorithm: `none`, `gzip`, or `zstd`.               |
+| `encryption`            | `boolean`     | No       | Enable at-rest encryption (skipped for files >20 MB).            |
+| `antivirus`             | `boolean`     | No       | Enable antivirus scanning (skipped for files >20 MB).            |
+| `transformations`       | `boolean`     | No       | Enable image transformation support.                             |
+
+**Returns:** `Promise<Models.Bucket>`
+
+```typescript
+import { ID, Permission, Role } from 'node-appwrite';
+import { Compression } from 'node-appwrite/enums';
+
+const bucket = await storage.createBucket({
+    bucketId: ID.unique(),
+    name: 'Profile Images',
+    permissions: [Permission.read(Role.any())],
+    maximumFileSize: 5 * 1024 * 1024, // 5 MB
+    allowedFileExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+    compression: Compression.Gzip,
+    encryption: true,
+    antivirus: true,
+});
+```
+
+---
+
+### `getBucket`
+
+Get metadata for a bucket by its ID.
+
+| Parameter  | Type     | Required | Description      |
+|------------|----------|----------|------------------|
+| `bucketId` | `string` | Yes      | Bucket unique ID.|
+
+**Returns:** `Promise<Models.Bucket>`
+
+```typescript
+const bucket = await storage.getBucket({ bucketId: '<BUCKET_ID>' });
+```
+
+---
+
+### `updateBucket`
+
+Update a storage bucket's settings. Provide the same parameters as `createBucket`.
+
+| Parameter  | Type     | Required | Description            |
+|------------|----------|----------|------------------------|
+| `bucketId` | `string` | Yes      | Bucket unique ID.      |
+| `name`     | `string` | Yes      | Updated bucket name.   |
+| …          | …        | No       | Same options as `createBucket`. |
+
+**Returns:** `Promise<Models.Bucket>`
+
+```typescript
+await storage.updateBucket({
+    bucketId: '<BUCKET_ID>',
+    name: 'Avatars',
+    maximumFileSize: 2 * 1024 * 1024,
+});
+```
+
+---
+
+### `deleteBucket`
+
+Permanently delete a bucket and all of its files.
+
+| Parameter  | Type     | Required | Description      |
+|------------|----------|----------|------------------|
+| `bucketId` | `string` | Yes      | Bucket unique ID.|
+
+**Returns:** `Promise<{}>`
+
+<Warning>
+  Deleting a bucket is irreversible. All files stored in the bucket will be permanently removed.
+</Warning>
+
+```typescript
+await storage.deleteBucket({ bucketId: '<BUCKET_ID>' });
+```
+
+---
+
+### `listFiles`
+
+Get a list of files in a bucket.
+
+| Parameter  | Type       | Required | Description                          |
+|------------|------------|----------|--------------------------------------|
+| `bucketId` | `string`   | Yes      | Bucket unique ID.                    |
+| `queries`  | `string[]` | No       | Filter/sort/paginate with `Query`.   |
+| `search`   | `string`   | No       | Search by file name.                 |
+| `total`    | `boolean`  | No       | Include total count in response.     |
+
+**Returns:** `Promise<Models.FileList>`
+
+```typescript
+import { Query } from 'node-appwrite';
+
+const files = await storage.listFiles({
+    bucketId: '<BUCKET_ID>',
+    queries: [Query.orderDesc('$createdAt'), Query.limit(20)],
+});
+```
+
+---
+
+### `createFile`
+
+Upload a file to a bucket. The SDK automatically uses chunked upload (5 MB chunks) for files larger than 5 MB.
+
+| Parameter     | Type                                   | Required | Description                                                   |
+|---------------|----------------------------------------|----------|---------------------------------------------------------------|
+| `bucketId`    | `string`                               | Yes      | Target bucket ID.                                             |
+| `fileId`      | `string`                               | Yes      | Unique file ID. Use `ID.unique()` to auto-generate.           |
+| `file`        | `File`                                 | Yes      | File object to upload.                                        |
+| `permissions` | `string[]`                             | No       | File-level permissions. Defaults to current user's perms.    |
+| `onProgress`  | `(progress: UploadProgress) => void`   | No       | Progress callback for chunked uploads.                        |
+
+**Returns:** `Promise<Models.File>`
+
+<Tip>
+  For large file uploads, use the `onProgress` callback to display upload progress to users. See [File Uploads](/guides/file-uploads) for a complete guide.
+</Tip>
+
+```typescript
+import { ID } from 'node-appwrite';
+import * as fs from 'fs';
+
+const fileData = fs.readFileSync('/path/to/image.jpg');
+const file = new File([fileData], 'image.jpg', { type: 'image/jpeg' });
+
+const uploaded = await storage.createFile({
+    bucketId: '<BUCKET_ID>',
+    fileId: ID.unique(),
+    file,
+    onProgress: (progress) => {
+        console.log(`${progress.progress}% uploaded`);
+    },
+});
+```
+
+---
+
+### `getFile`
+
+Get file metadata (name, size, MIME type, etc.) by file ID. Does not return file content.
+
+| Parameter  | Type     | Required | Description    |
+|------------|----------|----------|----------------|
+| `bucketId` | `string` | Yes      | Bucket ID.     |
+| `fileId`   | `string` | Yes      | File ID.       |
+
+**Returns:** `Promise<Models.File>`
+
+```typescript
+const file = await storage.getFile({
+    bucketId: '<BUCKET_ID>',
+    fileId: '<FILE_ID>',
+});
+console.log(file.name, file.sizeOriginal);
+```
+
+---
+
+### `getFileDownload`
+
+Download the raw file content as an `ArrayBuffer`.
+
+| Parameter  | Type     | Required | Description                           |
+|------------|----------|----------|---------------------------------------|
+| `bucketId` | `string` | Yes      | Bucket ID.                            |
+| `fileId`   | `string` | Yes      | File ID.                              |
+| `token`    | `string` | No       | File access token for private files.  |
+
+**Returns:** `Promise<ArrayBuffer>`
+
+```typescript
+const buffer = await storage.getFileDownload({
+    bucketId: '<BUCKET_ID>',
+    fileId: '<FILE_ID>',
+});
+// write to disk, send as HTTP response, etc.
+```
+
+---
+
+### `getFilePreview`
+
+Get a transformed preview image. Supports resizing, cropping, quality adjustment, borders, and format conversion. Only works for image files smaller than 10 MB.
+
+| Parameter      | Type           | Required | Description                                         |
+|----------------|----------------|----------|-----------------------------------------------------|
+| `bucketId`     | `string`       | Yes      | Bucket ID.                                          |
+| `fileId`       | `string`       | Yes      | File ID.                                            |
+| `width`        | `number`       | No       | Output width in pixels (0–4000).                    |
+| `height`       | `number`       | No       | Output height in pixels (0–4000).                   |
+| `gravity`      | `ImageGravity` | No       | Crop gravity (e.g. `center`, `top-left`).           |
+| `quality`      | `number`       | No       | JPEG quality 0–100.                                 |
+| `borderWidth`  | `number`       | No       | Border width in pixels (0–100).                     |
+| `borderColor`  | `string`       | No       | HEX border color (no `#`).                          |
+| `borderRadius` | `number`       | No       | Border radius in pixels (0–4000).                   |
+| `opacity`      | `number`       | No       | Opacity 0–1 (only for images with alpha channel).   |
+| `rotation`     | `number`       | No       | Rotation in degrees (−360 to 360).                  |
+| `background`   | `string`       | No       | HEX background color for transparent images.        |
+| `output`       | `ImageFormat`  | No       | Output format: `jpeg`, `png`, `gif`, `webp`.        |
+| `token`        | `string`       | No       | File access token.                                  |
+
+**Returns:** `Promise<ArrayBuffer>`
+
+```typescript
+const thumbnail = await storage.getFilePreview({
+    bucketId: '<BUCKET_ID>',
+    fileId: '<FILE_ID>',
+    width: 300,
+    height: 300,
+    gravity: ImageGravity.Center,
+    quality: 80,
+    output: ImageFormat.Webp,
+});
+```
+
+---
+
+### `updateFile`
+
+Update a file's name or permissions.
+
+| Parameter     | Type       | Required | Description                          |
+|---------------|------------|----------|--------------------------------------|
+| `bucketId`    | `string`   | Yes      | Bucket ID.                           |
+| `fileId`      | `string`   | Yes      | File ID.                             |
+| `name`        | `string`   | No       | New file name.                       |
+| `permissions` | `string[]` | No       | New permissions (replaces existing). |
+
+**Returns:** `Promise<Models.File>`
+
+```typescript
+await storage.updateFile({
+    bucketId: '<BUCKET_ID>',
+    fileId: '<FILE_ID>',
+    name: 'avatar.webp',
+});
+```
+
+---
+
+### `deleteFile`
+
+Permanently delete a file from a bucket.
+
+| Parameter  | Type     | Required | Description |
+|------------|----------|----------|-------------|
+| `bucketId` | `string` | Yes      | Bucket ID.  |
+| `fileId`   | `string` | Yes      | File ID.    |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await storage.deleteFile({ bucketId: '<BUCKET_ID>', fileId: '<FILE_ID>' });
+```
+
+---
+
+For a complete walkthrough of upload strategies and progress tracking, see [File Uploads](/guides/file-uploads). For permission string syntax, see [Permissions](/concepts/permissions).

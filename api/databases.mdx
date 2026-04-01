@@ -1,0 +1,354 @@
+---
+title: "Databases"
+description: "Create and query collections, documents, indexes, and transactions."
+---
+
+The `Databases` service provides full CRUD access to your project's document-oriented database. Organize data in databases → collections → documents and use the `Query` helper to filter and sort results.
+
+<Note>
+  Several `Databases` methods are marked **deprecated since 1.8.0** in favor of the new `TablesDB` API. The document CRUD methods (`listDocuments`, `createDocument`, etc.) continue to work and are the standard pattern for most use-cases.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, Databases } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const databases = new Databases(client);
+```
+
+## Methods
+
+### `listDocuments`
+
+Get all documents in a collection. Supports filtering, sorting, and pagination via the `Query` helper.
+
+| Parameter       | Type       | Required | Description                                              |
+|-----------------|------------|----------|----------------------------------------------------------|
+| `databaseId`    | `string`   | Yes      | Database ID.                                             |
+| `collectionId`  | `string`   | Yes      | Collection ID.                                           |
+| `queries`       | `string[]` | No       | Query strings built with `Query.*` helpers.              |
+| `transactionId` | `string`   | No       | Read uncommitted changes from an open transaction.       |
+| `total`         | `boolean`  | No       | Include total document count in response.                |
+| `ttl`           | `number`   | No       | Cache TTL in seconds (0–86400) for cached queries.       |
+
+**Returns:** `Promise<Models.DocumentList<Document>>`
+
+<Tip>
+  Pass a TypeScript interface as the generic parameter to get typed document results: `listDocuments<Post>(…)`.
+</Tip>
+
+```typescript
+import { Query } from 'node-appwrite';
+
+interface Post {
+    title: string;
+    published: boolean;
+}
+
+const result = await databases.listDocuments<Post>({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    queries: [
+        Query.equal('published', true),
+        Query.orderDesc('$createdAt'),
+        Query.limit(10),
+    ],
+});
+
+result.documents.forEach(doc => console.log(doc.title));
+```
+
+---
+
+### `getDocument`
+
+Fetch a single document by its ID.
+
+| Parameter       | Type       | Required | Description                                   |
+|-----------------|------------|----------|-----------------------------------------------|
+| `databaseId`    | `string`   | Yes      | Database ID.                                  |
+| `collectionId`  | `string`   | Yes      | Collection ID.                                |
+| `documentId`    | `string`   | Yes      | Document ID.                                  |
+| `queries`       | `string[]` | No       | Select specific attributes with `Query.select`. |
+| `transactionId` | `string`   | No       | Transaction ID for reading staged changes.    |
+
+**Returns:** `Promise<Document>`
+
+```typescript
+interface Post { title: string; body: string; }
+
+const post = await databases.getDocument<Post>({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    documentId: '<DOCUMENT_ID>',
+});
+```
+
+---
+
+### `createDocument`
+
+Create a new document. Define the collection's schema via attributes before inserting data.
+
+| Parameter       | Type       | Required | Description                                              |
+|-----------------|------------|----------|----------------------------------------------------------|
+| `databaseId`    | `string`   | Yes      | Database ID.                                             |
+| `collectionId`  | `string`   | Yes      | Collection ID.                                           |
+| `documentId`    | `string`   | Yes      | Unique document ID. Use `ID.unique()` to auto-generate.  |
+| `data`          | `object`   | Yes      | Document data as a JSON-compatible object.               |
+| `permissions`   | `string[]` | No       | Permission strings. Defaults to current user's perms.   |
+| `transactionId` | `string`   | No       | Stage this operation inside an open transaction.         |
+
+**Returns:** `Promise<Document>`
+
+```typescript
+import { ID, Permission, Role } from 'node-appwrite';
+
+interface Post { title: string; body: string; }
+
+const post = await databases.createDocument<Post>({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    documentId: ID.unique(),
+    data: { title: 'Hello World', body: 'My first post.' },
+    permissions: [Permission.read(Role.any())],
+});
+```
+
+---
+
+### `createDocuments`
+
+Bulk-create multiple documents in a single request.
+
+| Parameter       | Type       | Required | Description                                     |
+|-----------------|------------|----------|-------------------------------------------------|
+| `databaseId`    | `string`   | Yes      | Database ID.                                    |
+| `collectionId`  | `string`   | Yes      | Collection ID.                                  |
+| `documents`     | `object[]` | Yes      | Array of document data objects.                 |
+| `transactionId` | `string`   | No       | Stage inside an open transaction.               |
+
+**Returns:** `Promise<Models.DocumentList<Document>>`
+
+```typescript
+const result = await databases.createDocuments({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    documents: [
+        { $id: ID.unique(), title: 'Post A' },
+        { $id: ID.unique(), title: 'Post B' },
+    ],
+});
+```
+
+---
+
+### `updateDocument`
+
+Update an existing document. Only the fields you provide are changed; omitted fields retain their current values.
+
+| Parameter       | Type       | Required | Description                                           |
+|-----------------|------------|----------|-------------------------------------------------------|
+| `databaseId`    | `string`   | Yes      | Database ID.                                          |
+| `collectionId`  | `string`   | Yes      | Collection ID.                                        |
+| `documentId`    | `string`   | Yes      | Document ID.                                          |
+| `data`          | `object`   | No       | Partial document data to update.                      |
+| `permissions`   | `string[]` | No       | New permissions (replaces existing).                  |
+| `transactionId` | `string`   | No       | Stage inside an open transaction.                     |
+
+**Returns:** `Promise<Document>`
+
+```typescript
+const updated = await databases.updateDocument<Post>({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    documentId: '<DOCUMENT_ID>',
+    data: { title: 'Updated Title' },
+});
+```
+
+---
+
+### `updateDocuments`
+
+Bulk-update documents that match a query.
+
+| Parameter       | Type       | Required | Description                             |
+|-----------------|------------|----------|-----------------------------------------|
+| `databaseId`    | `string`   | Yes      | Database ID.                            |
+| `collectionId`  | `string`   | Yes      | Collection ID.                          |
+| `data`          | `object`   | No       | Partial document data to apply.         |
+| `queries`       | `string[]` | No       | Filter documents to update.             |
+| `transactionId` | `string`   | No       | Stage inside an open transaction.       |
+
+**Returns:** `Promise<Models.DocumentList<Document>>`
+
+```typescript
+await databases.updateDocuments({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    data: { published: false },
+    queries: [Query.lessThan('$createdAt', '2024-01-01')],
+});
+```
+
+---
+
+### `deleteDocument`
+
+Delete a specific document by its ID.
+
+| Parameter       | Type     | Required | Description                                |
+|-----------------|----------|----------|--------------------------------------------|
+| `databaseId`    | `string` | Yes      | Database ID.                               |
+| `collectionId`  | `string` | Yes      | Collection ID.                             |
+| `documentId`    | `string` | Yes      | Document ID.                               |
+| `transactionId` | `string` | No       | Stage inside an open transaction.          |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await databases.deleteDocument({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    documentId: '<DOCUMENT_ID>',
+});
+```
+
+---
+
+### `deleteDocuments`
+
+Bulk-delete documents matching a query.
+
+| Parameter       | Type       | Required | Description                                |
+|-----------------|------------|----------|--------------------------------------------|
+| `databaseId`    | `string`   | Yes      | Database ID.                               |
+| `collectionId`  | `string`   | Yes      | Collection ID.                             |
+| `queries`       | `string[]` | No       | Filter documents to delete.                |
+| `transactionId` | `string`   | No       | Stage inside an open transaction.          |
+
+**Returns:** `Promise<Models.DocumentList<Document>>`
+
+```typescript
+await databases.deleteDocuments({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    queries: [Query.equal('archived', true)],
+});
+```
+
+---
+
+### `createTransaction`
+
+Open a new transaction. Operations staged with a `transactionId` are held until you commit or roll back.
+
+| Parameter | Type     | Required | Description                       |
+|-----------|----------|----------|-----------------------------------|
+| `ttl`     | `number` | No       | Seconds before the transaction expires. |
+
+**Returns:** `Promise<Models.Transaction>`
+
+```typescript
+const tx = await databases.createTransaction({ ttl: 30 });
+const txId = tx.$id;
+
+await databases.createDocument({
+    databaseId: '<DATABASE_ID>',
+    collectionId: '<COLLECTION_ID>',
+    documentId: ID.unique(),
+    data: { title: 'Staged Post' },
+    transactionId: txId,
+});
+
+// Commit the transaction
+await databases.updateTransaction({ transactionId: txId, commit: true });
+```
+
+---
+
+### `updateTransaction`
+
+Commit or roll back an open transaction.
+
+| Parameter       | Type      | Required | Description                   |
+|-----------------|-----------|----------|-------------------------------|
+| `transactionId` | `string`  | Yes      | Transaction ID.               |
+| `commit`        | `boolean` | No       | Set `true` to commit.         |
+| `rollback`      | `boolean` | No       | Set `true` to roll back.      |
+
+**Returns:** `Promise<Models.Transaction>`
+
+```typescript
+await databases.updateTransaction({ transactionId: txId, commit: true });
+```
+
+---
+
+### `createCollection`
+
+Create a new collection inside a database.
+
+| Parameter          | Type       | Required | Description                                      |
+|--------------------|------------|----------|--------------------------------------------------|
+| `databaseId`       | `string`   | Yes      | Database ID.                                     |
+| `collectionId`     | `string`   | Yes      | Unique collection ID.                            |
+| `name`             | `string`   | Yes      | Collection name (max 128 chars).                 |
+| `permissions`      | `string[]` | No       | Collection-level permissions.                    |
+| `documentSecurity` | `boolean`  | No       | Enable per-document permission control.          |
+| `enabled`          | `boolean`  | No       | Whether the collection is publicly accessible.   |
+| `attributes`       | `object[]` | No       | Inline attribute definitions to create.          |
+| `indexes`          | `object[]` | No       | Inline index definitions to create.              |
+
+**Returns:** `Promise<Models.Collection>`
+
+```typescript
+const collection = await databases.createCollection({
+    databaseId: '<DATABASE_ID>',
+    collectionId: ID.unique(),
+    name: 'Posts',
+    permissions: [Permission.read(Role.any())],
+    documentSecurity: true,
+});
+```
+
+---
+
+## Additional methods
+
+| Method                         | Description                                               |
+|--------------------------------|-----------------------------------------------------------|
+| `list(…)`                      | List all databases in the project.                        |
+| `create(…)`                    | Create a new database.                                    |
+| `get({ databaseId })`          | Get a database by ID.                                     |
+| `update(…)`                    | Update a database's name or enabled status.               |
+| `delete({ databaseId })`       | Delete a database.                                        |
+| `listCollections(…)`           | List all collections in a database.                       |
+| `getCollection(…)`             | Get a collection by ID.                                   |
+| `updateCollection(…)`          | Update collection settings.                               |
+| `deleteCollection(…)`          | Delete a collection.                                      |
+| `listIndexes(…)`               | List indexes on a collection.                             |
+| `createIndex(…)`               | Create a collection index.                                |
+| `deleteIndex(…)`               | Delete a collection index.                                |
+| `listAttributes(…)`            | List attributes of a collection.                          |
+| `createStringAttribute(…)`     | Add a string attribute.                                   |
+| `createIntegerAttribute(…)`    | Add an integer attribute.                                 |
+| `createBooleanAttribute(…)`    | Add a boolean attribute.                                  |
+| `createFloatAttribute(…)`      | Add a float attribute.                                    |
+| `createDatetimeAttribute(…)`   | Add a datetime attribute.                                 |
+| `createEmailAttribute(…)`      | Add an email-validated string attribute.                  |
+| `createUrlAttribute(…)`        | Add a URL-validated string attribute.                     |
+| `createIpAttribute(…)`         | Add an IP address attribute.                              |
+| `createRelationshipAttribute(…)` | Add a relationship between two collections.             |
+| `getTransaction(…)`            | Get a transaction by ID.                                  |
+| `deleteTransaction(…)`         | Discard an open transaction.                              |
+| `createOperations(…)`          | Stage multiple operations in a single transaction call.   |
+
+For query syntax and helpers, see [Queries](/concepts/queries). For permission strings, see [Permissions](/concepts/permissions).

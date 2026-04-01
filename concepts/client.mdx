@@ -1,0 +1,185 @@
+---
+title: "Client"
+description: "Configure and use the Appwrite Node.js SDK client."
+---
+
+The `Client` class is the foundation of the Appwrite Node.js SDK. Every service — `Databases`, `Storage`, `Users`, and so on — takes a configured `Client` instance at construction time. You create one client per project and reuse it across your application.
+
+## Creating a client
+
+```typescript
+import { Client } from 'node-appwrite';
+
+const client = new Client();
+```
+
+The default endpoint is `https://cloud.appwrite.io/v1`. For self-hosted Appwrite instances, override it with `setEndpoint`.
+
+## Configuration methods
+
+All configuration methods return `this`, so you can chain them together.
+
+### setEndpoint
+
+```typescript
+client.setEndpoint(endpoint: string): this
+```
+
+Sets the API endpoint. The value must start with `http://` or `https://`; the client throws an `AppwriteException` if it does not.
+
+### setProject
+
+```typescript
+client.setProject(value: string): this
+```
+
+Sets the project ID. This maps to the `X-Appwrite-Project` request header.
+
+### setKey
+
+```typescript
+client.setKey(value: string): this
+```
+
+Sets a server-side API key. Use this for backend integrations that act on behalf of the project (not a specific user). Maps to the `X-Appwrite-Key` header.
+
+### setJWT
+
+```typescript
+client.setJWT(value: string): this
+```
+
+Authenticates requests as a specific user via a JSON Web Token. Maps to the `X-Appwrite-JWT` header.
+
+### setSession
+
+```typescript
+client.setSession(value: string): this
+```
+
+Authenticates requests using a user session string. Maps to the `X-Appwrite-Session` header.
+
+### setLocale
+
+```typescript
+client.setLocale(value: string): this
+```
+
+Sets the locale for the request (e.g. `en`, `fr`). Maps to the `X-Appwrite-Locale` header.
+
+### setForwardedUserAgent
+
+```typescript
+client.setForwardedUserAgent(value: string): this
+```
+
+Forwards the original client's user agent string when your server is acting as a proxy. Maps to the `X-Forwarded-User-Agent` header.
+
+### setSelfSigned
+
+```typescript
+client.setSelfSigned(selfSigned: boolean): this
+```
+
+Disables TLS certificate verification. Use only in local development against a self-signed certificate — never in production.
+
+<Warning>
+`setSelfSigned` is not supported in edge runtimes and will log a warning if called there.
+</Warning>
+
+### Impersonation methods
+
+These methods allow a user with the impersonator capability to act as another user. They require the current request to be authenticated as a user — an API key alone is not sufficient. Actions are attributed to the original impersonator in audit logs.
+
+```typescript
+client.setImpersonateUserId(value: string): this
+client.setImpersonateUserEmail(value: string): this
+client.setImpersonateUserPhone(value: string): this
+```
+
+Maps to `X-Appwrite-Impersonate-User-Id`, `X-Appwrite-Impersonate-User-Email`, and `X-Appwrite-Impersonate-User-Phone` respectively.
+
+### addHeader
+
+```typescript
+client.addHeader(header: string, value: string): this
+```
+
+Adds a custom request header. Header names are lowercased automatically.
+
+### getHeaders
+
+```typescript
+client.getHeaders(): Headers
+```
+
+Returns a shallow copy of the current headers object, including any authentication headers. The returned object is safe to inspect; modifying it does not affect the client.
+
+## File upload chunk size
+
+```typescript
+Client.CHUNK_SIZE // 5,242,880 bytes (5 MB)
+```
+
+The static `CHUNK_SIZE` constant defines the chunk size used by the SDK when uploading large files. Files smaller than or equal to this size are uploaded in a single request; larger files are split into chunks automatically.
+
+## Fluent configuration example
+
+Chain all configuration calls in a single expression:
+
+```typescript
+import { Client } from 'node-appwrite';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('my-project-id')
+  .setKey('my-api-key');
+```
+
+For a self-hosted instance with a custom locale:
+
+```typescript
+const client = new Client()
+  .setEndpoint('https://appwrite.example.com/v1')
+  .setProject('my-project-id')
+  .setKey('my-api-key')
+  .setLocale('fr');
+```
+
+## Passing the client to services
+
+Once configured, pass the client to any service constructor:
+
+```typescript
+import { Client, Databases, Storage, Users } from 'node-appwrite';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('my-project-id')
+  .setKey('my-api-key');
+
+const databases = new Databases(client);
+const storage = new Storage(client);
+const users = new Users(client);
+```
+
+<Note>
+Use one `Client` instance per Appwrite project. If your application interacts with multiple projects, create a separate `Client` for each.
+</Note>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Queries" icon="filter" href="/concepts/queries">
+    Filter, sort, and paginate results.
+  </Card>
+  <Card title="Permissions" icon="lock" href="/concepts/permissions">
+    Control access to resources.
+  </Card>
+  <Card title="Error handling" icon="triangle-alert" href="/concepts/error-handling">
+    Handle errors with AppwriteException.
+  </Card>
+  <Card title="File uploads guide" icon="upload" href="/guides/file-uploads">
+    Upload files with chunked upload support.
+  </Card>
+</CardGroup>

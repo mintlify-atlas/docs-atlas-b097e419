@@ -1,0 +1,175 @@
+---
+title: "File Uploads"
+description: "Upload files to Appwrite Storage with chunked upload support and progress tracking."
+---
+
+The Appwrite Node.js SDK handles file uploads through the `Storage` service. For files larger than 5 MB the SDK automatically splits the upload into chunks, retransmitting each one sequentially and calling a progress callback after each chunk completes.
+
+## Prerequisites
+
+- An Appwrite project with at least one Storage bucket. Create a bucket in the Appwrite Console under **Storage → Buckets**, or via `storage.createBucket()`.
+- A server API key with `storage.read` and `storage.write` scopes.
+
+## How uploads work
+
+| File size | Upload method |
+|-----------|---------------|
+| ≤ 5 MB | Single `multipart/form-data` request |
+| > 5 MB | Automatic chunked upload using `Content-Range` headers |
+
+The threshold is `Client.CHUNK_SIZE = 5 * 1024 * 1024` (5 MB). You do not need to handle chunking manually — passing any `File` object to `storage.createFile()` is sufficient.
+
+## Upload a file
+
+### Signature
+
+```typescript
+storage.createFile(params: {
+  bucketId: string;
+  fileId: string;
+  file: File;
+  permissions?: string[];
+  onProgress?: (progress: UploadProgress) => void;
+}): Promise<Models.File>
+```
+
+### Creating an `InputFile` from disk
+
+The SDK accepts the standard Web `File` object (re-exported from `node-fetch-native`). Read the file from disk using Node.js `fs` and wrap it in a `File`:
+
+```typescript
+import { readFileSync } from 'node:fs';
+import { File } from 'node-appwrite/file'; // re-export of the File class
+
+const buffer = readFileSync('./report.pdf');
+const file = new File([buffer], 'report.pdf', { type: 'application/pdf' });
+```
+
+<Note>
+`node-appwrite/file` re-exports the `File` constructor from `node-fetch-native`. It is identical to the browser `File` API. You can also use `Buffer` directly as the first argument in the `File` constructor because `Buffer` implements the `Blob` interface.
+</Note>
+
+### Upload with progress tracking
+
+```typescript
+import { Client, Storage, type UploadProgress } from 'node-appwrite';
+import { readFileSync } from 'node:fs';
+import { File } from 'node-appwrite/file';
+
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setProject('<PROJECT_ID>')
+  .setKey('<API_KEY>');
+
+const storage = new Storage(client);
+
+const buffer = readFileSync('./video.mp4');
+const file = new File([buffer], 'video.mp4', { type: 'video/mp4' });
+
+const result = await storage.createFile({
+  bucketId: '<BUCKET_ID>',
+  fileId: 'unique()',
+  file,
+  onProgress: (progress: UploadProgress) => {
+    console.log(
+      `Upload ${progress.progress}% complete` +
+      ` (${progress.sizeUploaded} bytes, chunk ${progress.chunksUploaded}/${progress.chunksTotal})`
+    );
+  },
+});
+
+console.log('File created:', result.$id);
+```
+
+The `UploadProgress` callback fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `$id` | `string` | File ID assigned by Appwrite |
+| `progress` | `number` | Percentage complete (0–100) |
+| `sizeUploaded` | `number` | Bytes uploaded so far |
+| `chunksTotal` | `number` | Total number of chunks |
+| `chunksUploaded` | `number` | Chunks successfully uploaded |
+
+The `onProgress` callback is invoked only for files that require multiple chunks (> 5 MB). For smaller files, the upload completes in a single request without triggering the callback.
+
+## File permissions
+
+By default, Appwrite grants all permissions to the creating user. On the server side you can set explicit permissions using the `Permission` and `Role` helpers:
+
+```typescript
+import { Client, Storage, Permission, Role } from 'node-appwrite';
+
+const result = await storage.createFile({
+  bucketId: '<BUCKET_ID>',
+  fileId: 'unique()',
+  file,
+  permissions: [
+    Permission.read(Role.any()),           // public read
+    Permission.write(Role.user('<USER_ID>')), // only this user can write
+  ],
+});
+```
+
+See [`/api/permission`](/api/permission) and [`/api/role`](/api/role) for the full list of permission and role helpers.
+
+## List files in a bucket
+
+```typescript
+const fileList = await storage.listFiles({
+  bucketId: '<BUCKET_ID>',
+});
+
+console.log(`Found ${fileList.total} file(s)`);
+
+for (const f of fileList.files) {
+  console.log(f.$id, f.name, f.sizeOriginal);
+}
+```
+
+## Get a file's metadata
+
+`getFile` returns a `Models.File` object with metadata but not the file contents. To download the binary content, use `getFileDownload`.
+
+```typescript
+const fileMeta = await storage.getFile({
+  bucketId: '<BUCKET_ID>',
+  fileId: '<FILE_ID>',
+});
+
+console.log('Name:', fileMeta.name);
+console.log('Size:', fileMeta.sizeOriginal, 'bytes');
+console.log('MIME type:', fileMeta.mimeType);
+console.log('Chunks:', fileMeta.chunksTotal, '/', fileMeta.chunksUploaded);
+```
+
+## Download a file
+
+```typescript
+const buffer = await storage.getFileDownload({
+  bucketId: '<BUCKET_ID>',
+  fileId: '<FILE_ID>',
+});
+
+// buffer is an ArrayBuffer
+import { writeFileSync } from 'node:fs';
+writeFileSync('./downloaded.pdf', Buffer.from(buffer));
+```
+
+## Delete a file
+
+```typescript
+await storage.deleteFile({
+  bucketId: '<BUCKET_ID>',
+  fileId: '<FILE_ID>',
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="Storage API reference" icon="folder-open" href="/api/storage">
+    Full method reference for the Storage service.
+  </Card>
+  <Card title="Permission helpers" icon="lock" href="/api/permission">
+    Learn how to set read, write, create, update, and delete permissions.
+  </Card>
+</CardGroup>

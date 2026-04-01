@@ -1,0 +1,338 @@
+---
+title: "Functions"
+description: "Deploy, manage, and execute serverless functions with the Appwrite Functions API."
+---
+
+The `Functions` service lets you create and manage serverless functions, upload code deployments, trigger executions, and retrieve execution logs — all from your server-side Node.js application.
+
+## Initialization
+
+```typescript
+import { Client, Functions } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const functions = new Functions(client);
+```
+
+## Methods
+
+### `list`
+
+Get a paginated list of all functions in the project.
+
+| Parameter | Type       | Required | Description                                 |
+|-----------|------------|----------|---------------------------------------------|
+| `queries` | `string[]` | No       | Filter/sort/paginate with `Query` helpers.  |
+| `search`  | `string`   | No       | Search by function name (max 256 chars).    |
+| `total`   | `boolean`  | No       | Include total count in response.            |
+
+**Returns:** `Promise<Models.FunctionList>`
+
+```typescript
+const result = await functions.list();
+console.log(result.functions);
+```
+
+---
+
+### `create`
+
+Create a new serverless function. You must specify a runtime. Optionally configure scheduling, event triggers, execution permissions, and VCS integration.
+
+| Parameter             | Type        | Required | Description                                                     |
+|-----------------------|-------------|----------|-----------------------------------------------------------------|
+| `functionId`          | `string`    | Yes      | Unique function ID. Use `ID.unique()` to auto-generate.         |
+| `name`                | `string`    | Yes      | Function name (max 128 chars).                                  |
+| `runtime`             | `Runtime`   | Yes      | Execution runtime (e.g. `Runtime.Node185`).                     |
+| `execute`             | `string[]`  | No       | Role strings with execution permissions.                        |
+| `events`              | `string[]`  | No       | Appwrite event triggers (max 100).                              |
+| `schedule`            | `string`    | No       | CRON schedule expression.                                       |
+| `timeout`             | `number`    | No       | Max execution time in seconds.                                  |
+| `enabled`             | `boolean`   | No       | Whether the function is publicly accessible.                    |
+| `logging`             | `boolean`   | No       | Include logs in execution responses.                            |
+| `entrypoint`          | `string`    | No       | Relative path to the entry file.                                |
+| `commands`            | `string`    | No       | Build commands to run before deployment.                        |
+| `scopes`              | `Scopes[]`  | No       | Appwrite API scopes available to the function's auto-key.       |
+| `installationId`      | `string`    | No       | VCS installation ID for Git-connected deployments.              |
+| `providerRepositoryId`| `string`    | No       | Git repository ID.                                              |
+| `providerBranch`      | `string`    | No       | Production branch name.                                         |
+| `providerSilentMode`  | `boolean`   | No       | Suppress VCS commit comments.                                   |
+| `providerRootDirectory`| `string`   | No       | Path to function code within the repo.                          |
+| `buildSpecification`  | `string`    | No       | Build specification for deployments.                            |
+| `runtimeSpecification`| `string`    | No       | Runtime specification for executions.                           |
+| `deploymentRetention` | `number`    | No       | Days to keep non-active deployments (0 = keep forever).         |
+
+**Returns:** `Promise<Models.Function>`
+
+```typescript
+import { ID, Runtime } from 'node-appwrite';
+
+const fn = await functions.create({
+    functionId: ID.unique(),
+    name: 'Send Welcome Email',
+    runtime: Runtime.Node185,
+    schedule: '0 9 * * 1', // every Monday at 9am
+    timeout: 30,
+    logging: true,
+});
+```
+
+---
+
+### `get`
+
+Get a function by its unique ID.
+
+| Parameter    | Type     | Required | Description   |
+|--------------|----------|----------|---------------|
+| `functionId` | `string` | Yes      | Function ID.  |
+
+**Returns:** `Promise<Models.Function>`
+
+```typescript
+const fn = await functions.get({ functionId: '<FUNCTION_ID>' });
+```
+
+---
+
+### `update`
+
+Update a function's configuration. Supply a new `name` at minimum; all other fields are optional updates.
+
+| Parameter    | Type     | Required | Description          |
+|--------------|----------|----------|----------------------|
+| `functionId` | `string` | Yes      | Function ID.         |
+| `name`       | `string` | Yes      | Updated function name.|
+| …            | …        | No       | Same options as `create`. |
+
+**Returns:** `Promise<Models.Function>`
+
+```typescript
+await functions.update({
+    functionId: '<FUNCTION_ID>',
+    name: 'Send Welcome Email v2',
+    timeout: 60,
+});
+```
+
+---
+
+### `delete`
+
+Permanently delete a function and all its deployments.
+
+| Parameter    | Type     | Required | Description  |
+|--------------|----------|----------|--------------|
+| `functionId` | `string` | Yes      | Function ID. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await functions.delete({ functionId: '<FUNCTION_ID>' });
+```
+
+---
+
+### `createDeployment`
+
+Upload a new code deployment as a `.tar.gz` archive. The SDK handles chunked upload automatically for large bundles.
+
+| Parameter    | Type      | Required | Description                                                         |
+|--------------|-----------|----------|---------------------------------------------------------------------|
+| `functionId` | `string`  | Yes      | Function ID.                                                        |
+| `code`       | `File`    | Yes      | Gzipped tar archive of your function code and dependencies.         |
+| `activate`   | `boolean` | Yes      | Automatically activate this deployment after a successful build.    |
+| `entrypoint` | `string`  | No       | Entry file path (overrides function-level setting).                 |
+| `commands`   | `string`  | No       | Build commands (overrides function-level setting).                  |
+| `onProgress` | `(progress: UploadProgress) => void` | No | Upload progress callback.            |
+
+**Returns:** `Promise<Models.Deployment>`
+
+```typescript
+import * as fs from 'fs';
+
+const archive = fs.readFileSync('./function.tar.gz');
+const code = new File([archive], 'function.tar.gz');
+
+const deployment = await functions.createDeployment({
+    functionId: '<FUNCTION_ID>',
+    code,
+    activate: true,
+    entrypoint: 'src/index.js',
+    commands: 'npm install',
+    onProgress: (p) => console.log(`${p.progress}%`),
+});
+```
+
+---
+
+### `updateFunctionDeployment`
+
+Switch the active deployment for a function. Use this to promote a deployment to production.
+
+| Parameter      | Type     | Required | Description                       |
+|----------------|----------|----------|-----------------------------------|
+| `functionId`   | `string` | Yes      | Function ID.                      |
+| `deploymentId` | `string` | Yes      | Deployment ID to activate.        |
+
+**Returns:** `Promise<Models.Function>`
+
+```typescript
+await functions.updateFunctionDeployment({
+    functionId: '<FUNCTION_ID>',
+    deploymentId: '<DEPLOYMENT_ID>',
+});
+```
+
+---
+
+### `listDeployments`
+
+List all deployments for a function.
+
+| Parameter    | Type       | Required | Description                       |
+|--------------|------------|----------|-----------------------------------|
+| `functionId` | `string`   | Yes      | Function ID.                      |
+| `queries`    | `string[]` | No       | Filter/sort/paginate.             |
+| `search`     | `string`   | No       | Search term.                      |
+| `total`      | `boolean`  | No       | Include total count.              |
+
+**Returns:** `Promise<Models.DeploymentList>`
+
+```typescript
+const deployments = await functions.listDeployments({
+    functionId: '<FUNCTION_ID>',
+});
+```
+
+---
+
+### `createExecution`
+
+Trigger a function execution. By default the call waits for the result (synchronous). Set `async: true` to fire-and-forget.
+
+| Parameter     | Type              | Required | Description                                                              |
+|---------------|-------------------|----------|--------------------------------------------------------------------------|
+| `functionId`  | `string`          | Yes      | Function ID.                                                             |
+| `body`        | `string`          | No       | HTTP request body sent to the function.                                  |
+| `async`       | `boolean`         | No       | Run in the background without waiting for a response (default: `false`). |
+| `xpath`       | `string`          | No       | HTTP path (including query params). Default: `/`.                        |
+| `method`      | `ExecutionMethod` | No       | HTTP method. Default: `POST`.                                            |
+| `headers`     | `object`          | No       | Custom HTTP headers passed to the function.                              |
+| `scheduledAt` | `string`          | No       | ISO 8601 datetime to schedule the execution in the future.               |
+
+**Returns:** `Promise<Models.Execution>`
+
+<Tip>
+  For long-running tasks, set `async: true` and use `getExecution` to poll the result.
+</Tip>
+
+```typescript
+// Synchronous execution
+const execution = await functions.createExecution({
+    functionId: '<FUNCTION_ID>',
+    body: JSON.stringify({ userId: '123' }),
+    method: ExecutionMethod.Post,
+});
+console.log(execution.responseBody);
+
+// Async execution — schedule for 5 minutes from now
+const asyncExec = await functions.createExecution({
+    functionId: '<FUNCTION_ID>',
+    async: true,
+    scheduledAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+});
+```
+
+---
+
+### `listExecutions`
+
+Get execution logs for a function.
+
+| Parameter    | Type       | Required | Description                              |
+|--------------|------------|----------|------------------------------------------|
+| `functionId` | `string`   | Yes      | Function ID.                             |
+| `queries`    | `string[]` | No       | Filter by status, trigger, duration, etc.|
+| `total`      | `boolean`  | No       | Include total count.                     |
+
+**Returns:** `Promise<Models.ExecutionList>`
+
+```typescript
+import { Query } from 'node-appwrite';
+
+const executions = await functions.listExecutions({
+    functionId: '<FUNCTION_ID>',
+    queries: [Query.equal('status', 'completed'), Query.limit(50)],
+});
+```
+
+---
+
+### `getExecution`
+
+Get a single execution log by ID, including status, response body, and duration.
+
+| Parameter     | Type     | Required | Description    |
+|---------------|----------|----------|----------------|
+| `functionId`  | `string` | Yes      | Function ID.   |
+| `executionId` | `string` | Yes      | Execution ID.  |
+
+**Returns:** `Promise<Models.Execution>`
+
+```typescript
+const execution = await functions.getExecution({
+    functionId: '<FUNCTION_ID>',
+    executionId: '<EXECUTION_ID>',
+});
+console.log(execution.status, execution.duration);
+```
+
+---
+
+### `listRuntimes`
+
+Get a list of all active runtimes on the current instance.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.RuntimeList>`
+
+```typescript
+const runtimes = await functions.listRuntimes();
+```
+
+---
+
+### `listSpecifications`
+
+Get allowed function hardware specifications for this instance.
+
+**Parameters:** None
+
+**Returns:** `Promise<Models.SpecificationList>`
+
+```typescript
+const specs = await functions.listSpecifications();
+```
+
+---
+
+## Additional methods
+
+| Method                           | Description                                                       |
+|----------------------------------|-------------------------------------------------------------------|
+| `getDeployment(…)`               | Get a specific deployment by ID.                                  |
+| `deleteDeployment(…)`            | Delete a deployment.                                              |
+| `createDuplicateDeployment(…)`   | Rebuild a deployment from its existing code archive.              |
+| `createTemplateDeployment(…)`    | Create a deployment from an Appwrite-hosted template.             |
+| `createVcsDeployment(…)`         | Trigger a deployment from a connected VCS repository.             |
+| `deleteExecution(…)`             | Delete an execution log.                                          |
+
+<Note>
+  For error handling, see [Error Handling](/concepts/error-handling). For enum values like `Runtime` and `ExecutionMethod`, see [Enums](/api/enums).
+</Note>

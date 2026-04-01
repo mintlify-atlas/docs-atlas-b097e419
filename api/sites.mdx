@@ -1,0 +1,320 @@
+---
+title: "Sites"
+description: "Deploy and manage static and server-side-rendered web sites."
+---
+
+The `Sites` service lets you create, configure, and deploy web sites hosted on Appwrite. Sites support static and SSR (server-side rendering) frameworks, VCS-connected deployments, and manual code uploads.
+
+<Note>
+  Sites require a Server SDK with an API key for all management operations. Deployments trigger a build process; use `updateSiteDeployment` to promote a build to production.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, Sites } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const sites = new Sites(client);
+```
+
+## Methods
+
+### `list`
+
+List all sites in the current project.
+
+| Parameter | Type       | Required | Description                                                                                                    |
+|-----------|------------|----------|----------------------------------------------------------------------------------------------------------------|
+| `queries` | `string[]` | No       | Filterable: `name`, `enabled`, `framework`, `deploymentId`, `buildCommand`, `installCommand`, `outputDirectory`. |
+| `search`  | `string`   | No       | Full-text search. Max 256 chars.                                                                               |
+| `total`   | `boolean`  | No       | Set to `false` to skip total count.                                                                            |
+
+**Returns:** `Promise<Models.SiteList>`
+
+```typescript
+import { Query } from 'node-appwrite';
+
+const siteList = await sites.list({
+    queries: [Query.equal('enabled', true)],
+});
+console.log(siteList.sites);
+```
+
+---
+
+### `create`
+
+Create a new site.
+
+| Parameter              | Type           | Required | Description                                                                      |
+|------------------------|----------------|----------|----------------------------------------------------------------------------------|
+| `siteId`               | `string`       | Yes      | Unique site ID. Use `ID.unique()` to auto-generate.                              |
+| `name`                 | `string`       | Yes      | Site display name. Max 128 chars.                                                |
+| `framework`            | `Framework`    | Yes      | Framework enum value (e.g. `Framework.Nextjs`).                                  |
+| `buildRuntime`         | `BuildRuntime` | Yes      | Runtime used during the build step.                                              |
+| `enabled`              | `boolean`      | No       | Whether the site is publicly accessible. Defaults to `true`.                     |
+| `logging`              | `boolean`      | No       | Enable request logs. Defaults to `true`.                                         |
+| `timeout`              | `number`       | No       | Max request duration in seconds.                                                 |
+| `installCommand`       | `string`       | No       | Dependency install command (e.g. `npm install`).                                 |
+| `buildCommand`         | `string`       | No       | Build command (e.g. `npm run build`).                                            |
+| `outputDirectory`      | `string`       | No       | Directory containing the build output.                                           |
+| `adapter`              | `Adapter`      | No       | Rendering adapter: `static` or `ssr`.                                            |
+| `installationId`       | `string`       | No       | Appwrite VCS installation ID for connected repos.                                |
+| `providerRepositoryId` | `string`       | No       | Repository ID of the linked VCS repo.                                            |
+| `providerBranch`       | `string`       | No       | Production branch for auto-deploys.                                              |
+| `providerSilentMode`   | `boolean`      | No       | Disable comments on commits and pull requests.                                   |
+| `providerRootDirectory`| `string`       | No       | Path to site code within the repo.                                               |
+| `deploymentRetention`  | `number`       | No       | Days to retain non-active deployments. `0` keeps all deployments.                |
+
+**Returns:** `Promise<Models.Site>`
+
+```typescript
+import { ID, Framework, BuildRuntime, Adapter } from 'node-appwrite';
+
+const site = await sites.create({
+    siteId: ID.unique(),
+    name: 'My Marketing Site',
+    framework: Framework.Nextjs,
+    buildRuntime: BuildRuntime.Node22,
+    buildCommand: 'npm run build',
+    outputDirectory: '.next',
+    adapter: Adapter.Ssr,
+});
+```
+
+---
+
+### `get`
+
+Retrieve a site by its unique ID.
+
+| Parameter | Type     | Required | Description |
+|-----------|----------|----------|-------------|
+| `siteId`  | `string` | Yes      | Site ID.    |
+
+**Returns:** `Promise<Models.Site>`
+
+```typescript
+const site = await sites.get({ siteId: '<SITE_ID>' });
+console.log(site.name, site.framework);
+```
+
+---
+
+### `update`
+
+Update an existing site's configuration.
+
+| Parameter | Type       | Required | Description                                |
+|-----------|------------|----------|--------------------------------------------|
+| `siteId`  | `string`   | Yes      | Site ID.                                   |
+| `name`    | `string`   | Yes      | Updated site name. Max 128 chars.          |
+| `framework` | `Framework` | Yes   | Updated framework.                         |
+| All other `create` optional params | — | No | Same optional fields as `create`. |
+
+**Returns:** `Promise<Models.Site>`
+
+```typescript
+const site = await sites.update({
+    siteId: '<SITE_ID>',
+    name: 'My Rebranded Site',
+    framework: Framework.Nextjs,
+    buildCommand: 'npm run build:prod',
+});
+```
+
+---
+
+### `delete`
+
+Permanently delete a site and all associated deployments.
+
+| Parameter | Type     | Required | Description |
+|-----------|----------|----------|-------------|
+| `siteId`  | `string` | Yes      | Site ID.    |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await sites.delete({ siteId: '<SITE_ID>' });
+```
+
+<Warning>
+  Deleting a site removes all deployments. This action cannot be undone.
+</Warning>
+
+---
+
+### `updateSiteDeployment`
+
+Set the active deployment for a site. Visitors will be served this deployment.
+
+| Parameter      | Type     | Required | Description        |
+|----------------|----------|----------|--------------------|
+| `siteId`       | `string` | Yes      | Site ID.           |
+| `deploymentId` | `string` | Yes      | Deployment ID.     |
+
+**Returns:** `Promise<Models.Site>`
+
+```typescript
+const site = await sites.updateSiteDeployment({
+    siteId: '<SITE_ID>',
+    deploymentId: '<DEPLOYMENT_ID>',
+});
+```
+
+---
+
+### `listDeployments`
+
+List all deployments for a site.
+
+| Parameter | Type       | Required | Description                                                                                   |
+|-----------|------------|----------|-----------------------------------------------------------------------------------------------|
+| `siteId`  | `string`   | Yes      | Site ID.                                                                                      |
+| `queries` | `string[]` | No       | Filterable: `buildSize`, `sourceSize`, `totalSize`, `buildDuration`, `status`, `activate`, `type`. |
+| `search`  | `string`   | No       | Full-text search. Max 256 chars.                                                              |
+| `total`   | `boolean`  | No       | Set to `false` to skip total count.                                                           |
+
+**Returns:** `Promise<Models.DeploymentList>`
+
+```typescript
+const deployments = await sites.listDeployments({ siteId: '<SITE_ID>' });
+deployments.deployments.forEach(d => console.log(d.$id, d.status));
+```
+
+---
+
+### `createDeployment`
+
+Upload a new code deployment for a site. Use `updateSiteDeployment` to promote it to production after the build completes.
+
+| Parameter          | Type       | Required | Description                                                             |
+|--------------------|------------|----------|-------------------------------------------------------------------------|
+| `siteId`           | `string`   | Yes      | Site ID.                                                                |
+| `code`             | `File`     | Yes      | Gzip-compressed code package.                                           |
+| `installCommand`   | `string`   | No       | Override the install command for this build.                            |
+| `buildCommand`     | `string`   | No       | Override the build command for this build.                              |
+| `outputDirectory`  | `string`   | No       | Override the output directory for this build.                           |
+| `activate`         | `boolean`  | No       | Automatically activate the deployment when the build succeeds.          |
+| `onProgress`       | `function` | No       | Callback `(progress: UploadProgress) => void` for upload progress.      |
+
+**Returns:** `Promise<Models.Deployment>`
+
+```typescript
+import { readFileSync } from 'fs';
+
+const deployment = await sites.createDeployment({
+    siteId: '<SITE_ID>',
+    code: new File([readFileSync('./dist.tar.gz')], 'dist.tar.gz'),
+    activate: true,
+    onProgress: (p) => console.log(`${p.progress}%`),
+});
+```
+
+---
+
+### `createDuplicateDeployment`
+
+Rebuild an existing deployment with the current site configuration (e.g. updated build command or output directory).
+
+| Parameter      | Type     | Required | Description                            |
+|----------------|----------|----------|----------------------------------------|
+| `siteId`       | `string` | Yes      | Site ID.                               |
+| `deploymentId` | `string` | Yes      | Source deployment ID to duplicate.     |
+
+**Returns:** `Promise<Models.Deployment>`
+
+```typescript
+const deployment = await sites.createDuplicateDeployment({
+    siteId: '<SITE_ID>',
+    deploymentId: '<DEPLOYMENT_ID>',
+});
+```
+
+---
+
+### `createVcsDeployment`
+
+Trigger a new build from a VCS branch or commit. Requires the site to be connected to a VCS installation.
+
+| Parameter   | Type               | Required | Description                                                 |
+|-------------|--------------------|----------|-------------------------------------------------------------|
+| `siteId`    | `string`           | Yes      | Site ID.                                                    |
+| `type`      | `VCSReferenceType` | Yes      | Reference type: `branch` or `commit`.                       |
+| `reference` | `string`           | Yes      | Branch name or commit hash.                                 |
+| `activate`  | `boolean`          | No       | Auto-promote the deployment on successful build.            |
+
+**Returns:** `Promise<Models.Deployment>`
+
+```typescript
+import { VCSReferenceType } from 'node-appwrite';
+
+const deployment = await sites.createVcsDeployment({
+    siteId: '<SITE_ID>',
+    type: VCSReferenceType.Branch,
+    reference: 'main',
+    activate: true,
+});
+```
+
+---
+
+### `getDeployment`
+
+Retrieve a specific deployment by ID.
+
+| Parameter      | Type     | Required | Description     |
+|----------------|----------|----------|-----------------|
+| `siteId`       | `string` | Yes      | Site ID.        |
+| `deploymentId` | `string` | Yes      | Deployment ID.  |
+
+**Returns:** `Promise<Models.Deployment>`
+
+```typescript
+const deployment = await sites.getDeployment({
+    siteId: '<SITE_ID>',
+    deploymentId: '<DEPLOYMENT_ID>',
+});
+console.log(deployment.status);
+```
+
+---
+
+### `deleteDeployment`
+
+Delete a deployment by ID.
+
+| Parameter      | Type     | Required | Description     |
+|----------------|----------|----------|-----------------|
+| `siteId`       | `string` | Yes      | Site ID.        |
+| `deploymentId` | `string` | Yes      | Deployment ID.  |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await sites.deleteDeployment({
+    siteId: '<SITE_ID>',
+    deploymentId: '<DEPLOYMENT_ID>',
+});
+```
+
+---
+
+## Additional methods
+
+| Method                      | Description                                                        |
+|-----------------------------|--------------------------------------------------------------------|
+| `listFrameworks`            | List all supported site frameworks for this Appwrite instance.     |
+| `listSpecifications`        | List allowed site resource specifications.                         |
+| `createTemplateDeployment`  | Create a deployment from an Appwrite template repository.          |
+| `getDeploymentDownload`     | Download a deployment's source or output archive.                  |
+
+<Tip>
+  Use `listFrameworks` to discover valid `Framework` and `BuildRuntime` values for the instance you are connecting to.
+</Tip>

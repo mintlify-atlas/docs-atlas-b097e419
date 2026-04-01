@@ -1,0 +1,160 @@
+---
+title: "TablesDB"
+description: "Manage relational-style tables, rows, columns, and indexes."
+---
+
+The `TablesDB` service is the successor to `Databases` for structured, relational-style data. It organises data as databases → tables → rows, with typed columns and SQL-style indexes.
+
+<Note>
+`TablesDB` replaces the deprecated `Databases.list()` and related methods from SDK v23+. Use `TablesDB` for new projects; existing `Databases` document CRUD methods continue to work.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, TablesDB } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const tablesDB = new TablesDB(client);
+```
+
+## Database methods
+
+### `list(queries?, search?, total?)`
+
+List all databases in the project.
+
+**Returns:** `Promise<Models.DatabaseList>`
+
+```typescript
+const dbs = await tablesDB.list();
+```
+
+### `create(databaseId, name, enabled?)`
+
+Create a new database.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `databaseId` | `string` | Yes | Unique database ID. |
+| `name` | `string` | Yes | Database name (max 128 chars). |
+| `enabled` | `boolean` | No | Enable/disable the database. |
+
+**Returns:** `Promise<Models.Database>`
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const db = await tablesDB.create({
+    databaseId: ID.unique(),
+    name: 'My Database',
+});
+```
+
+### `get(databaseId)` / `update(...)` / `delete(databaseId)`
+
+Standard CRUD for databases.
+
+```typescript
+const db = await tablesDB.get({ databaseId: 'db_id' });
+await tablesDB.delete({ databaseId: 'db_id' });
+```
+
+## Table methods
+
+### `listTables(databaseId, queries?, search?, total?)`
+
+List all tables in a database.
+
+**Returns:** `Promise<Models.CollectionList>`
+
+```typescript
+const tables = await tablesDB.listTables({ databaseId: 'db_id' });
+```
+
+### `createTable(databaseId, tableId, name, ...)`
+
+Create a new table inside a database.
+
+```typescript
+const table = await tablesDB.createTable({
+    databaseId: 'db_id',
+    tableId: ID.unique(),
+    name: 'users',
+});
+```
+
+### `getTable(databaseId, tableId)` / `updateTable(...)` / `deleteTable(...)`
+
+Standard CRUD for tables.
+
+## Row methods
+
+### `listRows(databaseId, tableId, queries?, total?)`
+
+List rows in a table with optional filtering via `Query` helpers.
+
+**Returns:** `Promise<Models.DocumentList>`
+
+```typescript
+import { Query } from 'node-appwrite';
+
+const rows = await tablesDB.listRows({
+    databaseId: 'db_id',
+    tableId: 'users',
+    queries: [Query.equal('active', true), Query.limit(25)]
+});
+```
+
+### `createRow(databaseId, tableId, rowId, data, permissions?, operations?)`
+
+Create a new row. Optionally pass atomic `operations` using the `Operator` helper.
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const row = await tablesDB.createRow({
+    databaseId: 'db_id',
+    tableId: 'users',
+    rowId: ID.unique(),
+    data: { name: 'Alice', email: 'alice@example.com', active: true }
+});
+```
+
+### `getRow(databaseId, tableId, rowId)` / `updateRow(...)` / `deleteRow(...)`
+
+Standard CRUD for rows.
+
+## Column methods
+
+`TablesDB` supports typed column definitions. Key methods:
+
+| Method | Description |
+|--------|-------------|
+| `listColumns(databaseId, tableId)` | List all columns |
+| `createStringColumn(...)` | Add a string column |
+| `createIntegerColumn(...)` | Add an integer column |
+| `createFloatColumn(...)` | Add a float column |
+| `createBooleanColumn(...)` | Add a boolean column |
+| `createDatetimeColumn(...)` | Add a datetime column |
+| `getColumn(...)` | Get column details |
+| `deleteColumn(...)` | Delete a column |
+
+## Index methods
+
+| Method | Description |
+|--------|-------------|
+| `listIndexes(databaseId, tableId)` | List indexes |
+| `createIndex(...)` | Create an index |
+| `getIndex(...)` | Get index details |
+| `deleteIndex(...)` | Delete an index |
+
+Use the `TablesDBIndexType` enum when creating indexes:
+
+```typescript
+import { TablesDBIndexType } from 'node-appwrite';
+```

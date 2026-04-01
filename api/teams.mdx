@@ -1,0 +1,310 @@
+---
+title: "Teams"
+description: "Create and manage teams, memberships, and shared preferences."
+---
+
+The `Teams` service lets you group users together and assign them roles. Teams are useful for implementing multi-tenant access control — only team members with specific roles can perform certain operations.
+
+<Note>
+  When a Server SDK creates a membership, the user is added automatically. When a Client SDK creates a membership, an invitation email or SMS is sent to the user instead.
+</Note>
+
+## Initialization
+
+```typescript
+import { Client, Teams } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const teams = new Teams(client);
+```
+
+## Methods
+
+### `list`
+
+Get a paginated list of all teams the current user belongs to.
+
+| Parameter | Type       | Required | Description                                                                         |
+|-----------|------------|----------|-------------------------------------------------------------------------------------|
+| `queries` | `string[]` | No       | Query filters. Filterable: `name`, `total`, `billingPlan`. Max 100, 4096 chars each.|
+| `search`  | `string`   | No       | Full-text search term. Max 256 chars.                                               |
+| `total`   | `boolean`  | No       | Set to `false` to skip total count calculation.                                     |
+
+**Returns:** `Promise<Models.TeamList<Preferences>>`
+
+```typescript
+import { Query } from 'node-appwrite';
+
+const teamList = await teams.list({
+    queries: [Query.limit(10)],
+});
+console.log(teamList.total, teamList.teams);
+```
+
+---
+
+### `create`
+
+Create a new team. The creator is automatically assigned the `owner` role.
+
+| Parameter | Type       | Required | Description                                                                       |
+|-----------|------------|----------|-----------------------------------------------------------------------------------|
+| `teamId`  | `string`   | Yes      | Unique team ID. Use `ID.unique()` to auto-generate.                               |
+| `name`    | `string`   | Yes      | Team display name. Max 128 chars.                                                 |
+| `roles`   | `string[]` | No       | Initial roles for the creator. Defaults to `['owner']`. Max 100 roles, 32 chars each. |
+
+**Returns:** `Promise<Models.Team<Preferences>>`
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const team = await teams.create({
+    teamId: ID.unique(),
+    name: 'Engineering',
+    roles: ['owner'],
+});
+```
+
+---
+
+### `get`
+
+Retrieve a team by its ID. All team members have read access.
+
+| Parameter | Type     | Required | Description |
+|-----------|----------|----------|-------------|
+| `teamId`  | `string` | Yes      | Team ID.    |
+
+**Returns:** `Promise<Models.Team<Preferences>>`
+
+```typescript
+const team = await teams.get({ teamId: '<TEAM_ID>' });
+console.log(team.name, team.total);
+```
+
+---
+
+### `updateName`
+
+Update the display name of a team. Only owners can perform this action.
+
+| Parameter | Type     | Required | Description                   |
+|-----------|----------|----------|-------------------------------|
+| `teamId`  | `string` | Yes      | Team ID.                      |
+| `name`    | `string` | Yes      | New team name. Max 128 chars. |
+
+**Returns:** `Promise<Models.Team<Preferences>>`
+
+```typescript
+const team = await teams.updateName({
+    teamId: '<TEAM_ID>',
+    name: 'Platform Engineering',
+});
+```
+
+---
+
+### `delete`
+
+Permanently delete a team. Only team owners can delete a team.
+
+| Parameter | Type     | Required | Description |
+|-----------|----------|----------|-------------|
+| `teamId`  | `string` | Yes      | Team ID.    |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await teams.delete({ teamId: '<TEAM_ID>' });
+```
+
+<Warning>
+  Deleting a team removes all associated memberships. This action cannot be undone.
+</Warning>
+
+---
+
+### `listMemberships`
+
+List the members of a team. All team members have read access to this endpoint.
+
+| Parameter | Type       | Required | Description                                                                               |
+|-----------|------------|----------|-------------------------------------------------------------------------------------------|
+| `teamId`  | `string`   | Yes      | Team ID.                                                                                  |
+| `queries` | `string[]` | No       | Filter by `userId`, `teamId`, `invited`, `joined`, `confirm`, `roles`. Max 100 queries.   |
+| `search`  | `string`   | No       | Full-text search. Max 256 chars.                                                          |
+| `total`   | `boolean`  | No       | Set to `false` to skip total count.                                                       |
+
+**Returns:** `Promise<Models.MembershipList>`
+
+```typescript
+const memberships = await teams.listMemberships({ teamId: '<TEAM_ID>' });
+memberships.memberships.forEach(m => console.log(m.userName, m.roles));
+```
+
+---
+
+### `createMembership`
+
+Invite a user to join the team. Provide a `userId`, `email`, or `phone` — at most one is needed. Priority order is `userId` > `email` > `phone`.
+
+| Parameter | Type       | Required | Description                                                                                       |
+|-----------|------------|----------|---------------------------------------------------------------------------------------------------|
+| `teamId`  | `string`   | Yes      | Team ID.                                                                                          |
+| `roles`   | `string[]` | Yes      | Roles to assign. Max 100 roles, 81 chars each.                                                    |
+| `userId`  | `string`   | No       | Existing user ID.                                                                                 |
+| `email`   | `string`   | No       | Email address of the invitee.                                                                     |
+| `phone`   | `string`   | No       | Phone number in E.164 format, e.g. `+16175551212`.                                                |
+| `url`     | `string`   | No       | Redirect URL after the user accepts the invitation (required for Client SDK invitations).          |
+| `name`    | `string`   | No       | Display name for new members. Max 128 chars.                                                      |
+
+**Returns:** `Promise<Models.Membership>`
+
+```typescript
+const membership = await teams.createMembership({
+    teamId: '<TEAM_ID>',
+    roles: ['developer'],
+    userId: '<USER_ID>',
+});
+```
+
+<Tip>
+  When using a Server SDK with an API key, the user is added immediately without needing to accept an invitation.
+</Tip>
+
+---
+
+### `getMembership`
+
+Retrieve a single membership record. All team members have read access.
+
+| Parameter      | Type     | Required | Description       |
+|----------------|----------|----------|-------------------|
+| `teamId`       | `string` | Yes      | Team ID.          |
+| `membershipId` | `string` | Yes      | Membership ID.    |
+
+**Returns:** `Promise<Models.Membership>`
+
+```typescript
+const membership = await teams.getMembership({
+    teamId: '<TEAM_ID>',
+    membershipId: '<MEMBERSHIP_ID>',
+});
+```
+
+---
+
+### `updateMembership`
+
+Update the roles assigned to a team member. Only owners can use this endpoint.
+
+| Parameter      | Type       | Required | Description                                                     |
+|----------------|------------|----------|-----------------------------------------------------------------|
+| `teamId`       | `string`   | Yes      | Team ID.                                                        |
+| `membershipId` | `string`   | Yes      | Membership ID.                                                  |
+| `roles`        | `string[]` | Yes      | New set of roles. Max 100 roles, 81 chars each.                 |
+
+**Returns:** `Promise<Models.Membership>`
+
+```typescript
+const membership = await teams.updateMembership({
+    teamId: '<TEAM_ID>',
+    membershipId: '<MEMBERSHIP_ID>',
+    roles: ['developer', 'reviewer'],
+});
+```
+
+---
+
+### `deleteMembership`
+
+Remove a member from a team, or allow a user to leave a team themselves.
+
+| Parameter      | Type     | Required | Description    |
+|----------------|----------|----------|----------------|
+| `teamId`       | `string` | Yes      | Team ID.       |
+| `membershipId` | `string` | Yes      | Membership ID. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+await teams.deleteMembership({
+    teamId: '<TEAM_ID>',
+    membershipId: '<MEMBERSHIP_ID>',
+});
+```
+
+---
+
+### `updateMembershipStatus`
+
+Accept a team invitation after the user is redirected back from the invitation link. Creates a session for the user on success.
+
+| Parameter      | Type     | Required | Description                                              |
+|----------------|----------|----------|----------------------------------------------------------|
+| `teamId`       | `string` | Yes      | Team ID.                                                 |
+| `membershipId` | `string` | Yes      | Membership ID from the invitation link.                  |
+| `userId`       | `string` | Yes      | User ID from the invitation link.                        |
+| `secret`       | `string` | Yes      | Secret token from the invitation link.                   |
+
+**Returns:** `Promise<Models.Membership>`
+
+```typescript
+const membership = await teams.updateMembershipStatus({
+    teamId: '<TEAM_ID>',
+    membershipId: '<MEMBERSHIP_ID>',
+    userId: '<USER_ID>',
+    secret: '<SECRET>',
+});
+```
+
+---
+
+### `getPrefs`
+
+Get the shared preferences object for a team. Any key-value data stored here is readable by all team members.
+
+| Parameter | Type     | Required | Description |
+|-----------|----------|----------|-------------|
+| `teamId`  | `string` | Yes      | Team ID.    |
+
+**Returns:** `Promise<Preferences>`
+
+```typescript
+const prefs = await teams.getPrefs<{ theme: string }>({ teamId: '<TEAM_ID>' });
+console.log(prefs.theme);
+```
+
+---
+
+### `updatePrefs`
+
+Replace the team's shared preferences object. The maximum allowed size is 64 kB.
+
+| Parameter | Type     | Required | Description                          |
+|-----------|----------|----------|--------------------------------------|
+| `teamId`  | `string` | Yes      | Team ID.                             |
+| `prefs`   | `object` | Yes      | Key-value object to store as prefs.  |
+
+**Returns:** `Promise<Preferences>`
+
+```typescript
+const prefs = await teams.updatePrefs({
+    teamId: '<TEAM_ID>',
+    prefs: { theme: 'dark', language: 'en' },
+});
+```
+
+<Tip>
+  Use team preferences to store settings that should be shared across all team members, such as notification preferences or UI configuration. For per-user settings, see the [Account](/api/account) service.
+</Tip>
+
+---
+
+## Roles and permissions
+
+Roles are plain strings and can be any value you define. The built-in `owner` role grants full administrative access to a team. For more details on how roles work with resource-level access control, see [Permissions](/concepts/permissions).

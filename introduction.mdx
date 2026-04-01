@@ -1,0 +1,68 @@
+---
+title: "Introduction"
+description: "The official server-side Node.js SDK for Appwrite."
+---
+
+## What is Appwrite?
+
+Appwrite is an open-source backend as a service (BaaS) platform that abstracts and simplifies common backend tasks behind a clean REST API. It handles authentication, databases, file storage, serverless functions, messaging, and more — so you can ship features instead of infrastructure.
+
+## What is this SDK?
+
+`node-appwrite` is the official server-side SDK for integrating with Appwrite from Node.js. It is designed for use in **server environments** — backend services, API routes, serverless functions, and scripts — where you have access to a secret API key.
+
+<Warning>
+  This is the **server SDK**, not the browser SDK. Do not use it in client-side code or expose your API key to end users. For browser-based integrations, use [`appwrite`](https://github.com/appwrite/sdk-for-web) (the web SDK) instead.
+</Warning>
+
+## Compatibility
+
+| Requirement | Version |
+|---|---|
+| Appwrite server | 1.9.x |
+| Node.js | 18+ (also works in Deno and WinterCG-compatible edge runtimes) |
+| SDK | 23.1.0 |
+
+The SDK works in Node.js, Deno, and edge runtimes that implement the [WinterCG minimum API](https://common-min-api.proposal.wintercg.org/) (Cloudflare Workers, Vercel Edge Functions, etc.).
+
+## Available services
+
+The SDK exposes the full Appwrite server API through typed service classes:
+
+| Service | Description |
+|---|---|
+| `Account` | Manage user accounts and sessions |
+| `Users` | Create and administer users server-side |
+| `Databases` | Store and query structured data |
+| `Storage` | Upload, download, and manage files |
+| `Functions` | Execute and manage serverless functions |
+| `Messaging` | Send email, SMS, and push notifications |
+| `Teams` | Manage teams and memberships |
+| `Sites` | Deploy and manage web sites |
+| `Health` | Monitor Appwrite server status |
+| `Locale` | Localisation helpers |
+| `Avatars` | Generate avatars and QR codes |
+| `Graphql` | Execute GraphQL queries |
+| `Backups` | Manage database backups |
+| `Project` | Manage project-level environment variables |
+| `Webhooks` | Create and manage project webhooks |
+| `Tokens` | Manage file tokens |
+| `TablesDB` | Relational-style tables, rows, and columns |
+| `Activities` | Query project activity and audit event logs |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="bolt" href="/quickstart">
+    Install the SDK and make your first request in minutes.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Configure your API key, JWT, or session credentials.
+  </Card>
+  <Card title="API reference — Users" icon="users" href="/api/users">
+    Full reference for the Users service.
+  </Card>
+  <Card title="API reference — Databases" icon="database" href="/api/databases">
+    Full reference for the Databases service.
+  </Card>
+</CardGroup>

@@ -1,0 +1,314 @@
+---
+title: "Users"
+description: "Server-side user management — create, query, and administer project users."
+---
+
+The `Users` service provides server-side (API-key authenticated) access to all user accounts in your project. Use it for admin tasks such as creating users with pre-hashed passwords, updating account status, and managing sessions on behalf of any user.
+
+<Warning>
+  All methods in this service require a **server-side API key** with the appropriate `users.*` scope. Do not use these endpoints from a client app — use the [Account](/api/account) service instead.
+</Warning>
+
+## Initialization
+
+```typescript
+import { Client, Users } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const users = new Users(client);
+```
+
+## Methods
+
+### `list`
+
+Get a paginated list of all users in the project. Supports filtering and full-text search.
+
+| Parameter | Type       | Required | Description                                         |
+|-----------|------------|----------|-----------------------------------------------------|
+| `queries` | `string[]` | No       | Query strings built with the `Query` helper.        |
+| `search`  | `string`   | No       | Full-text search term (max 256 chars).              |
+| `total`   | `boolean`  | No       | Include total count in response.                    |
+
+**Returns:** `Promise<Models.UserList<Preferences>>`
+
+```typescript
+import { Query } from 'node-appwrite';
+
+const result = await users.list({
+    queries: [Query.limit(25)],
+    search: 'jane',
+});
+console.log(result.users);
+```
+
+---
+
+### `create`
+
+Create a new user with a plain-text password. At least one of `email`, `phone`, or `password` should be supplied.
+
+| Parameter  | Type     | Required | Description                                         |
+|------------|----------|----------|-----------------------------------------------------|
+| `userId`   | `string` | Yes      | Unique user ID. Use `ID.unique()` to auto-generate. |
+| `email`    | `string` | No       | User email address.                                 |
+| `phone`    | `string` | No       | Phone number with country code (e.g. `+1…`).        |
+| `password` | `string` | No       | Plain-text password (min 8 chars).                  |
+| `name`     | `string` | No       | Display name (max 128 chars).                       |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+import { ID } from 'node-appwrite';
+
+const user = await users.create({
+    userId: ID.unique(),
+    email: 'jane@example.com',
+    password: 'supersecret',
+    name: 'Jane Doe',
+});
+```
+
+---
+
+### `get`
+
+Get a single user by their unique ID.
+
+| Parameter | Type     | Required | Description  |
+|-----------|----------|----------|--------------|
+| `userId`  | `string` | Yes      | User ID.     |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const user = await users.get({ userId: '<USER_ID>' });
+```
+
+---
+
+### `createArgon2User`
+
+Create a user whose password is already hashed with **Argon2**.
+
+| Parameter  | Type     | Required | Description                 |
+|------------|----------|----------|-----------------------------|
+| `userId`   | `string` | Yes      | Unique user ID.             |
+| `email`    | `string` | Yes      | User email.                 |
+| `password` | `string` | Yes      | Argon2-hashed password.     |
+| `name`     | `string` | No       | Display name.               |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const user = await users.createArgon2User({
+    userId: ID.unique(),
+    email: 'jane@example.com',
+    password: '$argon2id$v=19$...',
+});
+```
+
+---
+
+### `createBcryptUser`
+
+Create a user whose password is already hashed with **Bcrypt**.
+
+| Parameter  | Type     | Required | Description              |
+|------------|----------|----------|--------------------------|
+| `userId`   | `string` | Yes      | Unique user ID.          |
+| `email`    | `string` | Yes      | User email.              |
+| `password` | `string` | Yes      | Bcrypt-hashed password.  |
+| `name`     | `string` | No       | Display name.            |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const user = await users.createBcryptUser({
+    userId: ID.unique(),
+    email: 'legacy@example.com',
+    password: '$2b$10$...',
+});
+```
+
+<Tip>
+  Additional `createXxxUser` variants exist for **MD5**, **SHA**, **PHPass**, **Scrypt**, and **ScryptModified** hashing algorithms — useful when migrating users from third-party platforms.
+</Tip>
+
+---
+
+### `updateEmail`
+
+Update a user's email address by their user ID.
+
+| Parameter | Type     | Required | Description          |
+|-----------|----------|----------|----------------------|
+| `userId`  | `string` | Yes      | User ID.             |
+| `email`   | `string` | Yes      | New email address.   |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await users.updateEmail({
+    userId: '<USER_ID>',
+    email: 'new@example.com',
+});
+```
+
+---
+
+### `updateName`
+
+Update a user's display name.
+
+| Parameter | Type     | Required | Description         |
+|-----------|----------|----------|---------------------|
+| `userId`  | `string` | Yes      | User ID.            |
+| `name`    | `string` | Yes      | New display name.   |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await users.updateName({
+    userId: '<USER_ID>',
+    name: 'Jane Smith',
+});
+```
+
+---
+
+### `updatePassword`
+
+Reset or change a user's password (admin operation, no old password required).
+
+| Parameter  | Type     | Required | Description          |
+|------------|----------|----------|----------------------|
+| `userId`   | `string` | Yes      | User ID.             |
+| `password` | `string` | Yes      | New plain-text password. |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await users.updatePassword({
+    userId: '<USER_ID>',
+    password: 'newpassword123',
+});
+```
+
+---
+
+### `updatePhone`
+
+Update a user's phone number.
+
+| Parameter | Type     | Required | Description                                    |
+|-----------|----------|----------|------------------------------------------------|
+| `userId`  | `string` | Yes      | User ID.                                       |
+| `number`  | `string` | Yes      | New phone number with country code.            |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await users.updatePhone({
+    userId: '<USER_ID>',
+    number: '+16175551212',
+});
+```
+
+---
+
+### `updateStatus`
+
+Enable or disable a user account. A disabled user cannot log in.
+
+| Parameter | Type      | Required | Description                        |
+|-----------|-----------|----------|------------------------------------|
+| `userId`  | `string`  | Yes      | User ID.                           |
+| `status`  | `boolean` | Yes      | `true` to enable, `false` to disable. |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+// Disable a user
+await users.updateStatus({ userId: '<USER_ID>', status: false });
+```
+
+---
+
+### `updateLabels`
+
+Assign custom labels to a user. Labels are used for role-based access control.
+
+| Parameter | Type       | Required | Description               |
+|-----------|------------|----------|---------------------------|
+| `userId`  | `string`   | Yes      | User ID.                  |
+| `labels`  | `string[]` | Yes      | Array of label strings.   |
+
+**Returns:** `Promise<Models.User<Preferences>>`
+
+```typescript
+const updated = await users.updateLabels({
+    userId: '<USER_ID>',
+    labels: ['admin', 'beta-tester'],
+});
+```
+
+---
+
+### `listLogs`
+
+Retrieve the security activity log for a specific user.
+
+| Parameter | Type       | Required | Description                          |
+|-----------|------------|----------|--------------------------------------|
+| `userId`  | `string`   | Yes      | User ID.                             |
+| `queries` | `string[]` | No       | Supports `limit` and `offset` only.  |
+| `total`   | `boolean`  | No       | Include total count in response.     |
+
+**Returns:** `Promise<Models.LogList>`
+
+```typescript
+const logs = await users.listLogs({ userId: '<USER_ID>' });
+```
+
+---
+
+### `listIdentities`
+
+Get all OAuth2 and other linked identities across all users (admin view).
+
+| Parameter | Type       | Required | Description                 |
+|-----------|------------|----------|-----------------------------|
+| `queries` | `string[]` | No       | Filter results.             |
+| `search`  | `string`   | No       | Search term.                |
+| `total`   | `boolean`  | No       | Include total count.        |
+
+**Returns:** `Promise<Models.IdentityList>`
+
+```typescript
+const identities = await users.listIdentities();
+```
+
+---
+
+## Additional methods
+
+| Method                          | Description                                                           |
+|---------------------------------|-----------------------------------------------------------------------|
+| `delete({ userId })`            | Permanently delete a user and release their ID.                       |
+| `getPrefs({ userId })`          | Get a user's preferences object.                                      |
+| `updatePrefs({ userId, prefs })` | Overwrite a user's preferences object.                               |
+| `listSessions({ userId })`      | List all active sessions for a user.                                  |
+| `deleteSession({ userId, … })`  | Delete a specific session for a user.                                 |
+| `deleteSessions({ userId })`    | Delete all sessions for a user (force logout everywhere).             |
+| `updateEmailVerification(…)`    | Manually mark a user's email as verified.                             |
+| `updatePhoneVerification(…)`    | Manually mark a user's phone number as verified.                      |
+| `createToken({ userId })`       | Create an authentication token for a user (for custom auth flows).    |
+
+<Note>
+  For error codes and handling strategies, see [Error Handling](/concepts/error-handling).
+</Note>

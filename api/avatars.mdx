@@ -1,0 +1,135 @@
+---
+title: "Avatars"
+description: "Generate browser icons, credit card icons, country flags, QR codes, and user initials."
+---
+
+The `Avatars` service generates image assets server-side — browser icons, credit card logos, country flags, favicons from URLs, QR codes, and initials avatars. All methods return `Promise<ArrayBuffer>`.
+
+## Initialization
+
+```typescript
+import { Client, Avatars } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const avatars = new Avatars(client);
+```
+
+## Methods
+
+### `getBrowser(code, width?, height?, quality?)`
+
+Get a browser icon image. Use the `Browser` enum for the `code` parameter.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `code` | `Browser` | Yes | Browser code (e.g. `Browser.Chrome`). |
+| `width` | `number` | No | Width in pixels (0–2000). Default: 100. |
+| `height` | `number` | No | Height in pixels (0–2000). Default: 100. |
+| `quality` | `number` | No | Quality (0–100). |
+
+**Returns:** `Promise<ArrayBuffer>`
+
+```typescript
+import { Browser } from 'node-appwrite';
+
+const icon = await avatars.getBrowser({ code: Browser.Chrome, width: 64 });
+```
+
+### `getCreditCard(code, width?, height?, quality?)`
+
+Get a credit card provider logo. Use the `CreditCard` enum.
+
+```typescript
+import { CreditCard } from 'node-appwrite';
+
+const logo = await avatars.getCreditCard({ code: CreditCard.Visa });
+```
+
+### `getFlag(code, width?, height?, quality?)`
+
+Get a country flag image. Use the `Flag` enum for two-letter country codes.
+
+```typescript
+import { Flag } from 'node-appwrite';
+
+const flag = await avatars.getFlag({ code: Flag.US, width: 64 });
+```
+
+### `getImage(url, width?, height?)`
+
+Fetch and resize an image from any URL. Useful for proxying remote images.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | Remote image URL. |
+| `width` | `number` | No | Width (0–2000). Default: 400. |
+| `height` | `number` | No | Height (0–2000). Default: 400. |
+
+**Returns:** `Promise<ArrayBuffer>`
+
+```typescript
+const img = await avatars.getImage({
+    url: 'https://example.com/photo.jpg',
+    width: 200,
+    height: 200
+});
+```
+
+### `getFavicon(url)`
+
+Fetch a website's favicon.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | Website URL. |
+
+**Returns:** `Promise<ArrayBuffer>`
+
+```typescript
+const favicon = await avatars.getFavicon({ url: 'https://appwrite.io' });
+```
+
+### `getQR(text, size?, margin?, download?)`
+
+Generate a QR code for any text or URL.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `text` | `string` | Yes | Text to encode. |
+| `size` | `number` | No | QR code size (1–1000). Default: 400. |
+| `margin` | `number` | No | Margin (0–10). Default: 1. |
+| `download` | `boolean` | No | Trigger download on response. |
+
+**Returns:** `Promise<ArrayBuffer>`
+
+```typescript
+const qr = await avatars.getQR({
+    text: 'https://appwrite.io',
+    size: 200
+});
+```
+
+### `getInitials(name?, width?, height?, background?)`
+
+Generate an initials avatar from a user's name.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | `string` | No | Full name to derive initials from. |
+| `width` | `number` | No | Width (0–2000). Default: 500. |
+| `height` | `number` | No | Height (0–2000). Default: 500. |
+| `background` | `string` | No | Background hex color (without `#`). |
+
+**Returns:** `Promise<ArrayBuffer>`
+
+```typescript
+const avatar = await avatars.getInitials({
+    name: 'Jane Doe',
+    width: 100,
+    height: 100
+});
+```

@@ -1,0 +1,79 @@
+---
+title: "GraphQL"
+description: "Execute GraphQL queries and mutations against your Appwrite project."
+---
+
+The `Graphql` service lets you run GraphQL queries and mutations against Appwrite's GraphQL API endpoint.
+
+## Initialization
+
+```typescript
+import { Client, Graphql } from 'node-appwrite';
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('<PROJECT_ID>')
+    .setKey('<API_KEY>');
+
+const graphql = new Graphql(client);
+```
+
+## Methods
+
+### `query(query)`
+
+Execute a GraphQL query.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | `object` | Yes | The GraphQL query object to execute. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+const result = await graphql.query({
+    query: `
+        query {
+            accountGet {
+                _id
+                name
+                email
+            }
+        }
+    `
+});
+```
+
+### `mutation(query)`
+
+Execute a GraphQL mutation.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | `object` | Yes | The GraphQL mutation object to execute. |
+
+**Returns:** `Promise<{}>`
+
+```typescript
+const result = await graphql.mutation({
+    query: `
+        mutation CreateDocument($data: DocumentInput!) {
+            databasesCreateDocument(
+                databaseId: "my_db",
+                collectionId: "my_col",
+                documentId: "unique()",
+                data: $data
+            ) {
+                _id
+            }
+        }
+    `,
+    variables: {
+        data: { title: 'Hello' }
+    }
+});
+```
+
+<Note>
+Both `query` and `mutation` send requests to Appwrite's GraphQL endpoint. The distinction is semantic — `query` posts to `/graphql` and `mutation` posts to `/graphql/mutation`.
+</Note>
